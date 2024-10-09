@@ -1,0 +1,5 @@
+{
+    "dotnet.defaultSolution": "WooService.sln",
+    "editor.formatOnSave": true,
+    "editor.formatOnType": true
+}

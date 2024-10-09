@@ -1,0 +1,99 @@
+{
+  "format": 1,
+  "restore": {
+    "/home/julio/Desarrollos/CSharp/DotNetCore/WooService/WooService/WooService.csproj": {}
+  },
+  "projects": {
+    "/home/julio/Desarrollos/CSharp/DotNetCore/WooService/WooService/WooService.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/julio/Desarrollos/CSharp/DotNetCore/WooService/WooService/WooService.csproj",
+        "projectName": "WooService",
+        "projectPath": "/home/julio/Desarrollos/CSharp/DotNetCore/WooService/WooService/WooService.csproj",
+        "packagesPath": "/home/julio/.nuget/packages/",
+        "outputPath": "/home/julio/Desarrollos/CSharp/DotNetCore/WooService/WooService/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/julio/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        }
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "dependencies": {
+            "Microsoft.EntityFrameworkCore": {
+              "target": "Package",
+              "version": "[8.0.8, )"
+            },
+            "Microsoft.EntityFrameworkCore.sqlserver": {
+              "target": "Package",
+              "version": "[8.0.8, )"
+            },
+            "Microsoft.Extensions.Hosting": {
+              "target": "Package",
+              "version": "[8.0.0, )"
+            },
+            "System.ServiceModel.Duplex": {
+              "target": "Package",
+              "version": "[6.0.*, )"
+            },
+            "System.ServiceModel.Federation": {
+              "target": "Package",
+              "version": "[6.0.*, )"
+            },
+            "System.ServiceModel.Http": {
+              "target": "Package",
+              "version": "[6.0.*, )"
+            },
+            "System.ServiceModel.NetTcp": {
+              "target": "Package",
+              "version": "[6.0.*, )"
+            },
+            "System.ServiceModel.Security": {
+              "target": "Package",
+              "version": "[6.0.*, )"
+            },
+            "WooCommerceNET": {
+              "target": "Package",
+              "version": "[0.8.6, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/lib64/dotnet/sdk/8.0.108/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}

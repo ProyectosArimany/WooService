@@ -1,0 +1,14 @@
+Generar proxy para conectar a servicio de clientes
+
+CREAR proxy
+dotnet-svcutil http://SRVAXAOS:8101/DynamicsAx/Services/triAIFCreaClienteServiceGroup --outputDir Providers/AIFCrearClientes --outputFile AIFCrearClientes -n "*,WooService.AXServices.AIFCrearClientes"
+
+UPDATE proxy
+dotnet-svcutil -u 'Providers/AIFCrearClientes'
+
+
+CREAR proxy
+dotnet-svcutil http://SRVAXAOS:8101/DynamicsAx/Services/triAIFCreateSalesQuotationOrderSG --outputDir Providers/AIFCrearPedidos --outputFile AIFCrearPedidos -n "*,WooService.AXServices.AIFCrearPedidos"
+
+
+dotnet-svcutil -u 'Providers/AIFCrearPedidos'
