@@ -42,7 +42,7 @@ public class Pedido
     public string EmpresaId { get; set; } = "";
 
     /// <summary>
-    /// Identificador del cliente.
+    /// Identificador del cliente en sistema AX.
     /// </summary>
     [Column("Cliente_Id")]
     [StringLength(40)]

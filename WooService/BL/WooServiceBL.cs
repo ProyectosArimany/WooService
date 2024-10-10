@@ -6,6 +6,7 @@ using WooService.Models;
 using System.Text.Json;
 using WooCommerceNET.WooCommerce.v3;
 using WooService.Providers.AXServices;
+using WooService.Providers;
 
 namespace WooService.BL;
 
@@ -186,70 +187,116 @@ public static class WooServiceBL
     }
 
     /// <summary>
+    /// Elimina las direcciones asociadas a un cliente.
+    /// </summary>
+    /// <param name="_context">Conexión a base de datos local.</param>
+    /// <param name="direcciones">Lista de direcciones a quitar del cliente.</param>
+    /// <returns>True si la operación no produjo errores, de lo contratrio False.</returns>
+    public static (bool, string) BorrarDireccionesDelCliente(WooCommerceContext _context, List<ClienteDireccion> direcciones)
+    {
+        try
+        {
+            _context.ClienteDirecciones.RemoveRange(direcciones);
+            return (true, "");
+        }
+        catch (Exception ex)
+        {
+            return (false, "Error al borrar direcciones del cliente." + Global.GetExceptionError(ex));
+        }
+    }
+
+    /// <summary>
     /// 
     /// </summary>
     /// <param name="logger">Se utiliza para registro de eventos en el sistema.</param>
     /// <param name="_context">Conexión a base de datos arimany-woocommerce.</param>
     /// <param name="wooPedido">Datos del pedido obtenidos del portal web.</param>
     /// <returns>El registro creado o actualizado. Null si ocurre un error.</returns>
-    public static async Task<(WooPedido?, string)> CreateOrUpdateWooPedido(WooCommerceContext _context, AXContext aXContext,
-                                                                           Order pedido, string ClienteAX, Cliente cliente)
+    public static async Task<(WooPedido?, string, string)> CreateOrUpdateWooPedido(WooCommerceContext _context, AXContext aXContext,
+                                                                           Order pedido, ParametrosClientesNuevosWEB ParamsClientes,
+                                                                           AppSettings appsets)
     {
         try
         {
             int pedidoWooId = ((int?)pedido.id) ?? 0;
             var data = await _context.WooPedidos.FirstOrDefaultAsync(c => c.WooId == pedidoWooId);
+
             WooPedido wooPedido = new();
-            if (data == null)
+            if (data != null) return (wooPedido, "", "Pedido ya se registro"); // Pedido ya existe.
+
+            /// Pedido Nuevo, procesar y registrar en base de datos local, los datos del cliente,
+            /// que vienen el pedido.
+
+            (Cliente? cliente, string msg, String warning) = await CreateOrUpdateWooCliente(_context, aXContext, appsets, pedido, ParamsClientes);
+
+            /// Si ocurre un error al crear o actualizar el cliente, entonces retornar el error.
+            if (!Global.StrIsBlank(msg)) return (null, msg, warning);
+
+            /// Generar ID de pedido local.
+            (long correl, int intcorrelativo, msg) = await GenerateLocalOrderId(_context);
+            if (correl == 0)
             {
-                // Pedido Nuevo.  Generar ID de pedido local.
-                (long correl, int intcorrelativo, string msg) = await GenerateLocalOrderId(_context);
-                if (correl == 0)
-                {
-                    return (null, msg);
-                }
-
-                wooPedido.PedidoId = 0;
-                wooPedido.WooId = pedidoWooId;
-                wooPedido.WooClienteId = ((int?)pedido.customer_id) ?? 0;
-                wooPedido.ClienteId = cliente.ClienteId;
-                wooPedido.WooKey = pedido.order_key;
-                wooPedido.WooEstado = pedido.status;
-                wooPedido.WooCantidadProducto = pedido.line_items.Count;
-                wooPedido.WooTotal = pedido.total ?? 0;
-                wooPedido.WooTituloMetodoPago = pedido.payment_method_title;
-                wooPedido.WooMetodoPago = pedido.payment_method;
-                wooPedido.WooJSON = JsonSerializer.Serialize(pedido);
-                wooPedido.Operado = false;
-                wooPedido.SincronizarProducto = false;
-                wooPedido.GenerarEncabezadoJSON = false;
-                wooPedido.GenerarDetalleJSON = false;
-                wooPedido.WooFecha = pedido.date_created!.Value;
-                wooPedido.Fecha = DateTime.Now;
-                wooPedido.Correlativo = intcorrelativo;
-                wooPedido.PedidoId = correl;
-                wooPedido.Cliente = cliente;
-
-
-                // Agregar productos al pedido.
-                (bool ok, msg) = await AgregarProductosWoo(aXContext, pedido, wooPedido);
-
-                if (!ok) return (null, msg);
-                _context.WooPedidos.Add(wooPedido);
+                return (null, msg, warning);
             }
-            else
-            {
-                return (wooPedido, "");
-            }
+
+            wooPedido.PedidoId = 0;
+            wooPedido.WooId = pedidoWooId;
+            wooPedido.WooClienteId = ((int?)pedido.customer_id) ?? 0;
+            wooPedido.ClienteId = cliente.ClienteId;
+            wooPedido.WooKey = pedido.order_key;
+            wooPedido.WooEstado = pedido.status;
+            wooPedido.WooCantidadProducto = pedido.line_items.Count;
+            wooPedido.WooTotal = pedido.total ?? 0;
+            wooPedido.WooTituloMetodoPago = pedido.payment_method_title;
+            wooPedido.WooMetodoPago = pedido.payment_method;
+            wooPedido.WooJSON = JsonSerializer.Serialize(pedido);
+            wooPedido.Operado = false;
+            wooPedido.SincronizarProducto = false;
+            wooPedido.GenerarEncabezadoJSON = false;
+            wooPedido.GenerarDetalleJSON = false;
+            wooPedido.WooFecha = pedido.date_created!.Value;
+            wooPedido.Fecha = DateTime.Now;
+            wooPedido.Correlativo = intcorrelativo;
+            wooPedido.PedidoId = correl;
+            wooPedido.Cliente = cliente;
+
+
+            // Agregar productos al pedido.
+            (bool ok, msg) = await AgregarProductosWoo(aXContext, pedido, wooPedido);
+
+            if (!ok) return (null, msg, warning);
+            _context.WooPedidos.Add(wooPedido);
 
             await _context.SaveChangesAsync();
-            return (wooPedido, "");
+
+            /// Crear registro de pedido en base de datos local.
+            Pedido pedidoLocal = new()
+            {
+                Pedido_Id = wooPedido.PedidoId,
+                Woo_Pedido_Id = (long)wooPedido.WooId,
+                WooPedido = wooPedido,
+                PedidoAXId = "",
+                EmpresaId = appsets.AXCompany,
+                ClienteId = cliente.ClienteAXId,
+                DireccionId = 0,
+                EncabezadoJSON = "",
+                DetalleJSON = "",
+                MensajeAXId = 0,
+                MensajeAX = "",
+                Factura = "",
+                Despachado = false,
+                Operar = true,
+                OperadoAX = false
+            };
+            _context.Pedidos.Add(pedidoLocal);
+            await _context.SaveChangesAsync();
+            return (wooPedido, "", warning);
         }
         catch (Exception ex)
         {
             string msg = $"Error al crear o actualizar pedido.\n WOOID: {pedido.id}, cliente: {pedido.billing.first_name} {pedido.billing.last_name}" +
                          Environment.NewLine + Global.GetExceptionError(ex);
-            return (null, msg);
+            return (null, msg, "");
         }
     }
 
@@ -327,36 +374,47 @@ public static class WooServiceBL
     /// <param name="wooCliente">Datos del cliente obtenidos del portal web, 
     /// para crear o actualizar un registro de cliente en base de datos local.</param>
     /// <returns>El registro del cliente, creado o actualizado. Null si ocurre un error</returns>
-    public static async Task<(Cliente?, string)> CreateOrUpdateWooCliente(WooCommerceContext _context, AXContext aXContext, Order pedido, ParametrosClientesNuevosWEB ParamsClientes)
+    public static async Task<(Cliente?, string, string)> CreateOrUpdateWooCliente(WooCommerceContext _context, AXContext aXContext, AppSettings appsets, Order pedido, ParametrosClientesNuevosWEB ParamsClientes)
     {
         /// Llenar ficha del cliente, con datos del pedido obtenidos del portal web.
         Cliente wooCliente = LLenarFichaCliente(pedido);
+        String warning = "";
+        String Error = "";
 
         /// Crear o actualizar cliente en base de datos arimany-woocommerce.
+        if (!Global.StrIsBlank(SMTPService.IsValidEmail(wooCliente.CorreoElectronico)))
+        {
+            warning = "Correo electrónico no válido. No se asignará al cliente.";
+            wooCliente.CorreoElectronico = "";
+        }
+
+        // Crear servicio para clientes en AX.
+        AXClientesServices axservice = new(appsets);
         try
         {
             // Buscar cliente por ID. de lo contrario buscar por NIT.
-            (Cliente? data, String Error) = await BuscarClientePorId(_context, wooCliente.ClienteWooId, wooCliente.Nit);
+            (Cliente? data, Error) = await BuscarClientePorId(_context, wooCliente.ClienteWooId, wooCliente.Nit);
 
             /// Si ocurre un error al buscar el cliente.
             /// entonces retornar el error.
-            if (Global.StrIsBlank(Error)) return (null, Error);
+            if (Global.StrIsBlank(Error)) return (null, Error, warning);
 
             /// No se encontró el cliente, crear uno nuevo.
             if (data is null)
             {
                 // Cliente Nuevo.  Generar ID de cliente local.
-                (long correl, string msg) = await GenerateLocalClienteId(_context);
+                (long correl, Error) = await GenerateLocalClienteId(_context);
                 if (correl == 0)
                 {
-                    return (null, msg);
+                    return (null, Error, warning);
                 }
 
                 /// Buscar cliente en base de datos de AX.
-                (ClienteAX? clienteAX, string msgError) = await ServiciosAXBL.ObtenerClienteAX(aXContext, wooCliente.Nit);
+                (ClienteAX? clienteAX, Error) = await ServiciosAXBL.ObtenerClienteAX(aXContext, wooCliente.Nit);
 
                 /// returnar si hay un error al buscar el cliente en AX.
-                if (Global.StrIsBlank(msgError)) return (null, msgError);
+                if (Global.StrIsBlank(Error)) return (null, Error, warning);
+
                 if (clienteAX is not null) wooCliente.ClienteAXId = clienteAX!.Cliente;
 
                 wooCliente.ClienteId = correl;
@@ -374,16 +432,60 @@ public static class WooServiceBL
                 wooCliente = data;
             }
             await _context.SaveChangesAsync();
-            return (wooCliente, "");
+
+            ResultadoOperacionAX result = await axservice.CrearClienteWEB(wooCliente, ParamsClientes, appsets.Pais);
+            if (Global.StrIsBlank(result.ErrorMsg)) return (null, result.ErrorMsg, result.Advertencia);
+            if (wooCliente.ClienteAXId != result.IdCliente)
+            {
+                wooCliente.ClienteAXId = result.IdCliente;
+                _context.Clientes.Update(wooCliente);
+                await _context.SaveChangesAsync();
+            }
+
+            _context.Clientes.Update(wooCliente);
+            await _context.SaveChangesAsync();
         }
         catch (Exception ex)
         {
-            string msg = $"Error al crear o actualizar cliente. ID: {wooCliente.ClienteId}, NIT: {wooCliente.Nit}";
-            return (null, msg + Environment.NewLine + Global.GetExceptionError(ex));
+            String textError = $"Error al crear o actualizar cliente. ID: {wooCliente.ClienteId}, NIT: {wooCliente.Nit}";
+            return (null, textError + Environment.NewLine + Global.GetExceptionError(ex), warning);
         }
 
         /// Procesar direcciones de cliente
+        (List<ClienteDireccion> direcciones, string msg) = await ProcesarDireccionesDePedido(pedido, wooCliente, _context);
+        if (direcciones.Count == 0 || !Global.StrIsBlank(msg)) return (null, msg, warning);
 
+        /// Guardar direcciones de cliente.
+        /// Si hay direcciones entonces guardarlas.
+
+        try
+        {
+            /// Crear o actualizar direcciones del cliente.
+            wooCliente.Direcciones = direcciones;
+            await _context.SaveChangesAsync();
+
+            /// Registrar direcciones en AX.
+            warning = "";
+            Error = "";
+
+            wooCliente.Direcciones.ForEach(async c =>
+            {
+                ResultadoOperacionAX result;
+                c.ClienteId = wooCliente.ClienteId;
+                result = await axservice.CrearDireccionCliente(c, appsets.Pais);
+                Error += result.ErrorMsg + Environment.NewLine;
+                warning += result.Advertencia + Environment.NewLine;
+            });
+            if (!Global.StrIsBlank(Error)) return (null, Error, warning);
+        }
+        catch (Exception ex)
+        {
+            String textError = $"Error al guardar direcciones del cliente. ID: {wooCliente.ClienteId}, NIT: {wooCliente.Nit}";
+            return (null, textError + Environment.NewLine + Global.GetExceptionError(ex), warning);
+        }
+
+        /// Crear registro de pedido en base de datos local.
+        return (wooCliente, "", warning);
     }
 
 
@@ -393,7 +495,7 @@ public static class WooServiceBL
     /// con el sistema AX.
     /// </summary>
     /// <param name="logger">Se utiliza para registro de eventos en el sistema.</param>
-    /// <param name="_context">Conexión a base de datos arimany-woocommerce</param>
+    /// <param name="_context">Conexión a bif (Global.StrIsBlank(result.ErrorMsg) && c.TipoDireccion == (int)LogisticsLocationRoleType.Invoice) wooCliente.ase de datos arimany-woocommerce</param>
     /// <param name="pedido">Datos del pedido a registrar y preparar para sincronizar con AX</param>
     /// <returns>El registro guardado.</returns>
     public static async Task<(Pedido?, string)> CreateOrUpdatePedido(WooCommerceContext _context, Pedido pedido)
@@ -555,7 +657,33 @@ public static class WooServiceBL
             return ([], "No se encontró el municipio de la dirección de facturación.");
         }
         (DepartamentosYMunicipios? municipio, string msgError) = await BuscarDepartamentoPorMunicipio(_context, dirFacturacion.MunicipioAXId);
-        if (m)
+        if (Global.StrIsBlank(msgError)) return ([], msgError);
+
+        // terminar el municipio y departamento no existen.
+        if (municipio is null && Global.StrIsBlank(msgError))
+        {
+            return ([], $"No se encontró el municipio de la dirección de facturación {dirFacturacion.MunicipioAXId}.");
+        }
+        dirFacturacion.MunicipioAXId = municipio!.Municipio;
+        dirFacturacion.DepartamentoAXId = municipio!.Departamento;
+
+        dirEnvio.MunicipioAXId = dirFacturacion.MunicipioAXId;
+        dirEnvio.DepartamentoAXId = dirFacturacion.DepartamentoAXId;
+
+        if (direccionesCliente.Count != 0)
+        {
+            (bool ok, string msg) = BorrarDireccionesDelCliente(_context, direccionesCliente);
+            if (!ok) return ([], msg);
+        }
+
+        dirFacturacion.ClienteId = cliente.ClienteId;
+        dirFacturacion.Cliente = cliente;
+        dirEnvio.ClienteId = cliente.ClienteId;
+        dirEnvio.Cliente = cliente;
+
+        direccionesCliente.Add(dirFacturacion);
+        direccionesCliente.Add(dirEnvio);
+        return (direccionesCliente, "");
     }
 
 

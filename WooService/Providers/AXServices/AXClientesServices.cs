@@ -77,9 +77,20 @@ public class AXClientesServices
     /// <param name="Pais">Pais de residencia del cliente</param>
     /// <param name="Depto">Departamento de residencia del cliente</param>
     /// <returns>Estado de la operación</returns>
-    public async Task<ResultadoOperacionAX> CrearClienteWEB(Cliente cliente, ParametrosClientesNuevosWEB ParamClientes, String Pais, String Depto)
+    public async Task<ResultadoOperacionAX> CrearClienteWEB(Cliente cliente, ParametrosClientesNuevosWEB ParamClientes, String Pais)
     {
-        string msgError;
+
+        String Depto, msgError;
+        if (cliente is null || ParamClientes is null || cliente.Direcciones is null || cliente.Direcciones.Count == 0)
+        {
+            msgError = "Datos del cliente o parametros para crear cliente son obligatorios.";
+            return new ResultadoOperacionAX(msgError, "", "", 0);
+        }
+
+        if (String.IsNullOrWhiteSpace(Pais)) return new ResultadoOperacionAX("El país de residencia del cliente es obligatorio.", "", "", 0);
+
+        Depto = cliente.Direcciones[0].DepartamentoAXId;
+
         FichaClienteJSON fichaCliente = new()
         {
             CodigoCliente = cliente.ClienteAXId,
@@ -92,7 +103,6 @@ public class AXClientesServices
             DoctoIdentificacion = "",
             Pais = Pais,
             Depto = Depto
-
         };
 
 
@@ -126,9 +136,30 @@ public class AXClientesServices
     /// </summary>
     /// <param name="JSONDireccionCliente">JSON con datos de la dirección</param>
     /// <returns>Estado de la operación</returns>   
-    public async Task<ResultadoOperacionAX> CrearDireccionCliente(string JSONDireccionCliente)
+    public async Task<ResultadoOperacionAX> CrearDireccionCliente(ClienteDireccion direccion, String Pais)
     {
+
+        if (Global.StrIsBlank(direccion.Cliente.ClienteAXId))
+
+
+            return new ResultadoOperacionAX("El código de cliente es obligatorio para crear una dirección.", "", "", 0);
+         ]
+        
+        DireccionClienteJSON direccionCliente = new()
+        {
+            CodigoCliente = direccion.Cliente.ClienteAXId,
+            RecIdDeDireccion = 0,
+            TipoDireccion = direccion.TipoDireccion,
+            Descripcion = direccion.Direccion,
+            Pais = Pais,
+            Depto = direccion.DepartamentoAXId,
+            Municipio = direccion.MunicipioAXId,
+            Calle = direccion.Direccion + " " + direccion.DireccionComplemento,
+            EsPrimaria = 1,
+        };
+
         string msgError;
+        string JSONDireccionCliente = JsonSerializer.Serialize(direccionCliente);
         try
         {
             var response = await client.AIFCrearDireccionAsync(this.callContext, JSONDireccionCliente);
