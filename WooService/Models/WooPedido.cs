@@ -14,25 +14,25 @@ public class WooPedido
     /// Representa el número interno del pedido en esta tabla.
     /// </summary>
     [Key, Column(name: "Pedido_Id"), DatabaseGenerated(DatabaseGeneratedOption.None)]
-    public long PedidoId { get; set; }
+    public long PedidoId { get; set; } = 0;
 
     /// <summary>
     /// El número de pedido asignado en el portal de arimany.com
     /// </summary>
     [Column("Woo_Id")]
-    public int? WooId { get; set; }
+    public int WooId { get; set; } = 0;
 
     /// <summary>
     /// El código de cliente generado en WooCommerce
     /// </summary>
     [Column("Woo_Cliente_Id")]
-    public int? WooClienteId { get; set; }
+    public int WooClienteId { get; set; } = 0;
 
     /// <summary>
     /// Código de cliente asignado por sistema AX
     /// </summary>
     [Column("Cliente_Id")]
-    public long? ClienteId { get; set; }
+    public long ClienteId { get; set; } = 0;
 
     /// <summary>
     /// Relación con la entidad Cliente
@@ -45,7 +45,7 @@ public class WooPedido
     /// </summary>
     [Column("Woo_Key")]
     [StringLength(150)]
-    public string WooKey { get; set; } = null!;
+    public string WooKey { get; set; } = "";
 
     /// <summary>
     /// El estado actual del pedido en WooCommerce (arimany.com)

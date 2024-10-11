@@ -1,7 +1,6 @@
 using System;
 
 namespace WooService.Models;
-using Newtonsoft.Json;
 
 /// <summary>
 /// Encabezado de pedido, enviado a Sistema
@@ -24,26 +23,26 @@ public class EncabezadoJSON
     /// Fecha de recepción del pedido
     /// </summary>
 
-    public string FechaRecepcion { get; set; } = string.Empty;
+    public DateTime FechaRecepcion { get; set; } = DateTime.Now;
 
     /// <summary>
     /// Fecha de envío del pedido
     /// </summary>
 
-    public string FechaEnvio { get; set; } = string.Empty;
+    public DateTime FechaEnvio { get; set; } = DateTime.Now;
 
     /// <summary>
     /// Condiciones de pago, esta se obtiene de la tabla de parametros para wooservice,
     /// en sistema AX.
     /// </summary>
-    [JsonProperty(nameof(CondicionesPago))]
+
     public string CondicionesPago { get; set; } = string.Empty;
 
     /// <summary>
     /// Si el valor es verdadero entonces el pedido se marca como de,
     /// temporada.
     /// </summary>
-    [JsonProperty(nameof(PedidoTemporada))]
+
     public string PedidoTemporada { get; set; } = string.Empty;
 
 }

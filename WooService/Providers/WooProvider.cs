@@ -9,8 +9,12 @@ public class WooProvider
 {
     private readonly RestAPI _restApi;
     private readonly WCObject _wooCommerceObject;
-    private readonly ILogger<WooProvider> _logger;
-    private string MsgError = "";
+    private readonly ILogger _logger;
+    private string MsgError;
+
+    /// <summary>
+    /// Listado de estados de pedidos en WooCommerce.
+    /// </summary>
     public readonly Dictionary<string, string> EstadosWooCommerce = new()
     {
         {"pending", "pending"},
@@ -23,7 +27,7 @@ public class WooProvider
         { "empacando", "empacando"}
     };
 
-    public WooProvider(string wooCommerceApiUri, string wooCommerceApiKey, string wooCommerceApiSecret, ILogger<WooProvider> logger)
+    public WooProvider(string wooCommerceApiUri, string wooCommerceApiKey, string wooCommerceApiSecret, ILogger logger)
     {
         _logger = logger;
         MsgError = "";
@@ -40,6 +44,11 @@ public class WooProvider
         }
     }
 
+    /// <summary>
+    /// Obtiene los pedidos del portal web según el estado especificado. Estado debe ser empacando.
+    /// </summary>
+    /// <param name="statusPedido"></param>
+    /// <returns></returns>
     public async Task<List<Order>> ObtenerPedidos(string statusPedido)
     {
         MsgError = "";
@@ -53,8 +62,8 @@ public class WooProvider
         }
         catch (Exception ex)
         {
-            MsgError = Global.GetExceptionError(ex);
-            _logger.LogError(ex, "Error al obtener pedidos");
+            MsgError = "Error al obtener pedidos del portal web" + Environment.NewLine + Global.GetExceptionError(ex);
+            _logger.LogError(ex, "Error al obtener pedidos del portal web");
             return [];
         }
     }

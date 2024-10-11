@@ -5,14 +5,31 @@ using System.Text.Json;
 using System.IdentityModel.Tokens.Jwt;
 
 namespace WooService.Providers.AXServices;
-
+/// <summary>
+/// Proveedor de servicios para la creación de clientes en AX. 
+/// Servicios AIF/WCF expuestos en Dynamics AX.
+/// </summary>
 public class AXClientesServices
 {
-
+    /// <summary>
+    /// Contexto de llamada de servicios AIF de AX.
+    /// </summary>
     readonly CallContext callContext;
+
+    /// <summary>
+    /// Configuración de la aplicación.
+    /// </summary>
     readonly AppSettings appSettings;
+
+    /// <summary>
+    /// Cliente para consumir los servicios de creación de clientes en AX.
+    /// </summary>
     readonly triAIFCrearClienteServiceClient client;
 
+    /// <summary>
+    /// Constructor de la clase.
+    /// </summary>
+    /// <param name="appsets">Configuración de la aplicación</param>
     public AXClientesServices(AppSettings appsets)
     {
         this.appSettings = appsets;
@@ -136,21 +153,18 @@ public class AXClientesServices
     /// </summary>
     /// <param name="JSONDireccionCliente">JSON con datos de la dirección</param>
     /// <returns>Estado de la operación</returns>   
-    public async Task<ResultadoOperacionAX> CrearDireccionCliente(ClienteDireccion direccion, String Pais)
+    public async Task<ResultadoOperacionAX> CrearDireccionCliente(ClienteDireccion direccion, string NombreCliente, String Pais)
     {
 
         if (Global.StrIsBlank(direccion.Cliente.ClienteAXId))
-
-
             return new ResultadoOperacionAX("El código de cliente es obligatorio para crear una dirección.", "", "", 0);
-         ]
-        
+
         DireccionClienteJSON direccionCliente = new()
         {
             CodigoCliente = direccion.Cliente.ClienteAXId,
             RecIdDeDireccion = 0,
-            TipoDireccion = direccion.TipoDireccion,
-            Descripcion = direccion.Direccion,
+            TipoDireccion = (int)direccion.TipoDireccion,
+            Descripcion = direccion.TipoDireccion == LogisticsLocationRoleType.Invoice ? NombreCliente : "DIRECCION DE ENVIO",
             Pais = Pais,
             Depto = direccion.DepartamentoAXId,
             Municipio = direccion.MunicipioAXId,
@@ -180,6 +194,10 @@ public class AXClientesServices
         return new ResultadoOperacionAX(msgError, "", "", 0);
     }
 
+
+    /// <summary>
+    /// Crea un nuevo contacto de cliente en AX.
+    /// </summary>
     public async Task<ResultadoOperacionAX> CrearContactoDeCliente(string JSONContactoCliente)
     {
         string msgError = "";
@@ -256,7 +274,7 @@ public class AXClientesServices
 /// <summary>
 /// Tipos de direcciones utilizadas en sistema AX.
 /// </summary>
-enum LogisticsLocationRoleType
+public enum LogisticsLocationRoleType
 {
     Definidoporelusuario = 0,  // Definido por el usuario
     Invoice = 1,               // Facturación
@@ -280,8 +298,37 @@ enum LogisticsLocationRoleType
     Reallocation = 150         // Reasignación
 }
 
+/// <summary>
+/// Tipos de métodos de contacto electrónico utilizados en sistema AX.
+/// </summary>
+public enum LogisticsElectronicAddressMethodType
+{
+    /// <summary>
+    /// Sin tipo de contaco
+    /// </summary>
+    None = 0,
+    /// <summary>
+    /// El contacto es un número de teléfono.
+    /// </summary>
+    Teléfono = 1,
+    /// <summary>
+    /// El contacto es una dirección de correo electrónico.
+    /// </summary>
+    Email = 2,
+    /// <summary>
+    /// El contacto es una dirección URL.
+    /// </summary>
+    URL = 3,
+    /// <summary>
+    /// El contacto es un número de telex.
+    /// </summary>
+    Telex = 4,
 
-
+    /// <summary>
+    /// El contacto es un número de fax.
+    /// </summary>
+    Fax = 5,
+}
 
 /// <summary>
 /// Clase para recibir el resultado de la operación de los servicios de AX

@@ -1,38 +1,56 @@
 <!DOCTYPE html>
 <html lang="es">
 
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notificación de Error</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+            color: #333;
+        }
+
+        h1 {
+            font-size: 1.5em;
+            color: #2c3e50;
+        }
+
+        p {
+            margin: 10px 0;
+        }
+
+        .footer {
+            margin-top: 20px;
+            font-size: 0.9em;
+            color: #666;
+        }
+    </style>
+</head>
+
 <body>
-    <br><br>
-    <p>
-    <h4>TRITON, S.A.</h4>
-    <h4>FECHA</h4>
-    <h4>Notificación de cambio de contraseña</h4>
-    </p>
-    <br>
-    <p>
-        Estimado ${subject}
-        <br>
-        <br>
-        <br>
-        Su contraseña ha cambiado. La nueva contraseña es: <br>
-    <h3><strong>${NewPass}</strong></h3>
-    </p>
-    .
-    <footer>
-        <br>
-        <br>
-        </p>Atentamente TI.</p>
-        <br>
-        <br>
-        <br>
-        <br>
-        <div>
-            <p style="font-size: 12px; font-family: Sans-serif">
-                Este mensaje es de tipo informativo. Por favor
-                <strong>No</strong> contestar.
-            </p>
-        </div>
-    </footer>
+    <h1>TRITON, S.A.</h1>
+    <h2>Servicio de descarga de pedidos del portal arimany.com</h2>
+    <h3>Notificación de ${TipoNotificacion}</h3>
+
+    <p>Estimado/a ${subject}:</p>
+
+    <p>Le informamos que el servicio WooService ha emitido una notificación de tipo ${TipoNotificacion}. A continuación,
+        se detalla la información relevante:</p>
+
+    <p>${MessageBody}</p>
+
+    <p>Agradecemos su comprensión.</p>
+
+    <div class="footer">
+        <p>Atentamente, <br> Departamento de TI</p>
+    </div>
+
+    <div class="footer">
+        <p>Este mensaje es informativo. Por favor, no responda a este correo.</p>
+    </div>
 </body>
 
 </html>

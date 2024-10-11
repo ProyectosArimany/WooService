@@ -3,6 +3,7 @@ using System;
 namespace WooService.Models;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using WooService.Providers.AXServices;
 
 /// <summary>
 /// Almacena la dirección de envío o entrega, en base de datos local,
@@ -17,7 +18,7 @@ public class ClienteDireccion
     /// </summary>
     [Key, Column(name: "Detalle_Id", Order = 0)]
     [DatabaseGenerated(DatabaseGeneratedOption.None)]
-    public int TipoDireccion { get; set; }
+    public LogisticsLocationRoleType TipoDireccion { get; set; }
 
     /// <summary>
     /// Código de cliente interno, generado para la tabla.
@@ -67,4 +68,10 @@ public class ClienteDireccion
     /// Indica si esta dirección es para envío.
     /// </summary>
     public bool Envio { get; set; }
+    [NotMapped]
+
+    /// <summary>
+    /// ID de dirección en sistema AX.
+    /// </summary>
+    public long DireccionId { get; set; }
 }

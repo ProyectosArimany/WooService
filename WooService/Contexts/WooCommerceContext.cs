@@ -33,4 +33,5 @@ public class WooCommerceContext(AppSettings appsettings) : DbContext
     public DbSet<WooPedidoProducto> WooPedidoProductos { get; set; } = null!;
     public DbSet<ParametrosWooCommerce> ParametrosWooCommerce { get; set; } = null!;
     public DbSet<DepartamentosYMunicipios> DepartamentosYMunicipios { get; set; } = null!;
+    public DbSet<Notificaciones> Notificaciones { get; set; } = null!;
 }
