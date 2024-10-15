@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using WooService.Workers;
 using WooService.Contexts;
 using WooService.Utils;
 using WooService.Models;
@@ -7,7 +6,8 @@ using System.Text.Json;
 using WooCommerceNET.WooCommerce.v3;
 using WooService.Providers.AXServices;
 using WooService.Providers;
-using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.IdentityModel.Tokens;
+
 
 namespace WooService.BL;
 
@@ -22,8 +22,9 @@ public static class WooServiceBL
     /// un correlativo de 3 digitos.
     /// </summary>
     /// <returns>Tuple con el ID del pedido generado, o Cero y un mensaje de error (si lo hubiese).</returns>
-    private static async Task<(long, int, string)> GenerateLocalOrderId(WooCommerceContext _context)
+    private static async Task<(long, int, string, string, string)> GenerateLocalOrderId(WooCommerceContext _context)
     {
+        string Error = String.Empty, Causa = String.Empty, Solucion = String.Empty;
         try
         {
             var data = await _context.WooPedidos
@@ -35,11 +36,14 @@ public static class WooServiceBL
                 string strCorrel = DateTime.Now.ToString("yyyyMMdd") + "001";
                 if (long.TryParse(strCorrel, out long correl))
                 {
-                    return (correl, 1, "");
+                    return (correl, 1, Error, Causa, Solucion);
                 }
                 else
                 {
-                    return (0, 0, $"Error al generar ID de pedido local");
+                    Error = "Error al generar ID de pedido local";
+                    Causa = $"Valor que produjo el error de conversión {strCorrel}";
+                    Solucion = $"Verificar si el valor de correlativo no excede {int.Max}.";
+                    return (0, 0, Error, Causa, Solucion);
                 }
             }
             else
@@ -48,17 +52,24 @@ public static class WooServiceBL
                 string strCorrel = correl.ToString();
                 if (int.TryParse(strCorrel.AsSpan(strCorrel.Length - 3, 3), out int intcorrelativo))
                 {
-                    return (correl, intcorrelativo, "");
+                    return (correl, intcorrelativo, Error, Causa, Solucion);
                 }
                 else
                 {
-                    return (0, 0, "Error al generar ID de pedido local");
+                    Error = "Error al generar ID de pedido local";
+                    Causa = $"Valor que produjo el error de conversión {strCorrel}";
+                    Solucion = $"Verificar si el valor de correlativo no excede {int.Max}.";
+                    return (0, 0, Error, Causa, Solucion);
                 }
             }
         }
         catch (Exception ex)
         {
-            return (0, 0, "Error al generar ID de pedido local" + Environment.NewLine + Global.GetExceptionError(ex));
+            Error = "Error al generar ID de pedido local";
+            Causa = $"Error al recuperar datos para generar correlativo de ventas tabla WooPedidos.\n" +
+                     Global.GetExceptionError(ex);
+            Solucion = $"Verificar que la tabla y base de datos, para registro de notificaciones este disponible.";
+            return (0, 0, Error, Causa, Solucion);
         }
     }
 
@@ -68,8 +79,9 @@ public static class WooServiceBL
     /// un correlativo de 3 digitos.
     /// </summary>
     /// <returns>Tuple con el ID del cliente generado, o Cero y un mensaje de error (si lo hubiese).</returns>
-    private static async Task<(long, string)> GenerateLocalClienteId(WooCommerceContext _context)
+    private static async Task<(long, string, string, string)> GenerateLocalClienteId(WooCommerceContext _context)
     {
+        string Error = String.Empty, Causa = String.Empty, Solucion = String.Empty;
         try
         {
             var data = await _context.Clientes
@@ -81,21 +93,28 @@ public static class WooServiceBL
                 string strCorrel = DateTime.Now.ToString("yyyyMMdd") + "001";
                 if (long.TryParse(strCorrel, out long correl))
                 {
-                    return (correl, "");
+                    return (correl, Error, Causa, Solucion);
                 }
                 else
                 {
-                    return (0, "Error al obtener numero de pedido local");
+                    Error = "Error al generar ID de Cliente local.";
+                    Causa = $"Valor que produjo el error de conversión {strCorrel}.";
+                    Solucion = $"Verificar si el valor de correlativo no excede {int.Max}.";
+                    return (0, Error, Causa, Solucion);
                 }
             }
             else
             {
-                return (data.ClienteId + 1, "");
+                return (data.ClienteId + 1, Error, Causa, Solucion);
             }
         }
         catch (Exception ex)
         {
-            return (0, "Error generating local order id" + Environment.NewLine + Global.GetExceptionError(ex));
+            Error = "Error al generar ID de Cliente local.";
+            Causa = $"Error al leer datos de cliente para genera correlativo." + Environment.NewLine +
+                     Global.GetExceptionError(ex);
+            Solucion = $"Verificar que la tabla Clientes este disponible,\n y que la base de datos este también disponible.";
+            return (0, Error, Causa, Solucion);
         }
     }
 
@@ -108,23 +127,35 @@ public static class WooServiceBL
     /// <param name="_context">Conexión a base de datos arimany-woocommerce</param>
     /// <param name="municipio">Filtar utilzando este campo</param>
     /// <returns>El municipio encontrado o null si ocurre algun error</returns>
-    private static async Task<(DepartamentosYMunicipios?, string)> BuscarDepartamentoPorMunicipio(WooCommerceContext _context, string municipio)
+    private static async Task<(DepartamentosYMunicipios?, string, string, string)> BuscarDepartamentoPorMunicipio(WooCommerceContext _context, string municipio)
     {
+        string Error = String.Empty, Causa = String.Empty, Solucion = String.Empty;
         try
         {
             var data = await _context.DepartamentosYMunicipios.FirstOrDefaultAsync(c => c.Municipio == municipio);
             if (data != null)
             {
-                return (data, "");
+                return (data, Error, Causa, Solucion);
             }
             else
             {
-                return (null, "No se encontró el Departamento/Municipio.");
+                Error = $"No se encontró el Departamento/Municipio. {municipio}";
+                Causa = "El municipio no ha sido registrado o el valor es incorrecto.";
+                Solucion = "Verificar que el municipio este registrado en la tabla DepartamentosYMunicipios." +
+                           Environment.NewLine +
+                           "Verificar el dato de departamento/municipio en" + Environment.NewLine +
+                           "el pedido del portal web.";
+                return (null, Error, Causa, Solucion);
             }
         }
         catch (Exception ex)
         {
-            return (null, "Se produjo un error al buscar el Departamento/Municipio." + Environment.NewLine + Global.GetExceptionError(ex));
+            Error = "Error al recuperar datos del Departamento/Municipio.";
+            Causa = "Se produjo un error en la lectura de la tabla DepartamentosYMunicipios.";
+            Solucion = "1. Verificar que la tabla DepartamentosYMunicipios este disponible." + Environment.NewLine + Global.GetExceptionError(ex) +
+                       Environment.NewLine + "2. Verificar que la base de datos este disponible." + Environment.NewLine +
+                       "3. Verificar la conexión a la base de datos.";
+            return (null, Error, Causa, Solucion);
         }
     }
 
@@ -136,11 +167,15 @@ public static class WooServiceBL
     /// <param name="clienteId">Id del cliente en portal web (CustumerID)</param>
     /// <param name="NIT">NIT del cliente</param>
     /// <returns>El cliente encontrado o null si ocurre un error</returns>
-    private static async Task<(Cliente?, string)> BuscarClientePorId(WooCommerceContext _context, long clienteId, string NIT)
+    private static async Task<(Cliente?, string, string, string)> BuscarClientePorId(WooCommerceContext _context, long clienteId, string NIT)
     {
+        string Error = String.Empty, Causa = String.Empty, Solucion = String.Empty;
         if (clienteId == 0 && Global.StrIsBlank(NIT))
         {
-            return (null, "Debe proporcionar un ID de cliente o NIT.");
+            Error = "Debe proporcionar un ID de cliente o NIT.";
+            Causa = "No se proporcionó un ID de cliente o NIT.";
+            Solucion = "Proporcione un ID de cliente o NIT para buscar el cliente.";
+            return (null, Error, Causa, Solucion);
         }
         try
         {
@@ -156,14 +191,28 @@ public static class WooServiceBL
             {
                 cliente = await _context.Clientes.FirstOrDefaultAsync(c => c.ClienteId == clienteId || c.Nit == NIT);
             }
-            string msg = cliente is null ? $"No se encontró el cliente. ID: {clienteId}, NIT: {NIT}" : "";
 
-            return (cliente, msg);
+            if (cliente != null)
+            {
+                Error = $"";
+                Causa = "No se encontró el cliente. ID: {clienteId}, NIT: {NIT}." + Environment.NewLine +
+                        "El cliente no ha sido registrado o el valor es incorrecto.";
+                Solucion = "1. Verificar que el cliente este registrado en la tabla Clientes." + Environment.NewLine +
+                           "2. Verificar si el cliente tiene un ID asignado en el portal web." + Environment.NewLine;
+            }
+
+            return (cliente, Error, Causa, Solucion);
         }
         catch (Exception ex)
         {
-            string msg = $"Se produjo un error al buscar el cliente. ID: {clienteId}, NIT: {NIT}" + Environment.NewLine + Global.GetExceptionError(ex);
-            return (null, msg);
+            Error = $"Error al consultar cliente. ID: {clienteId}, NIT: {NIT}";
+            Causa = "Error en la lectura de la tabla Clientes." + Environment.NewLine +
+                    Global.GetExceptionError(ex);
+            Solucion = "Verificar que la tabla Clientes este disponible " + Environment.NewLine +
+                       "Que no este bloqueada. Que tenga permisos de lectura." + Environment.NewLine +
+                       "2. Verificar que la base de datos este disponible." + Environment.NewLine;
+
+            return (null, Error, Causa, Solucion);
         }
     }
 
@@ -174,18 +223,37 @@ public static class WooServiceBL
     /// <param name="_context">Conexión a base de datos arimany-woocommerce</param>
     /// <param name="clienteId">Id del cliente en portal web (CustumerID)</param>
     /// <returns>Listado de direcciones o null si ocurre un error.</returns>
-    private static async Task<(List<ClienteDireccion>?, string)> BuscarDireccionesCliente(WooCommerceContext _context, long clienteId)
+    private static async Task<(List<ClienteDireccion>, string, string, string)> BuscarDireccionesCliente(WooCommerceContext _context, long clienteId)
     {
+        string Error = String.Empty, Causa = String.Empty, Solucion = String.Empty;
+        List<ClienteDireccion> data = [];
         try
         {
-            var data = await _context.ClienteDirecciones.Where(c => c.ClienteId == clienteId).ToListAsync();
-            return (data, "");
+            data = await _context.ClienteDirecciones.Where(c => c.ClienteId == clienteId).ToListAsync();
+            if (data.Count != 0)
+            {
+                Error = "No se encontrarion direcciones para el cliente.";
+                Causa = "No existe un registro de direcciones para el cliente.";
+                Solucion = "Verifique que el pedido de venta de arimany.com," + Environment.NewLine +
+                            "contenga la dirección de envío y facturación del cliente.";
+            }
+
         }
         catch (Exception ex)
         {
-            return (null, "Error al buscar direcciones del cliente." + Global.GetExceptionError(ex));
+            Error = "Error al buscar direcciones del cliente.";
+            Causa = "Error en la lectura de la tabla Cliente_Direccion." + Environment.NewLine +
+                    Global.GetExceptionError(ex);
+            Solucion = "Verificar que la tabla Cliente_Direccion y la base de datos arimany-woocommerce, esten disponibles." + Environment.NewLine +
+                       "Verificar que la conexión a la base de datos este disponible." + Environment.NewLine +
+                       "Verificar que la tabla Cliente_Direccion no este bloqueada." + Environment.NewLine +
+                       "Verificar que la tabla Cliente_Direccion tenga permisos de lectura." + Environment.NewLine +
+                       "LLamar a soporte técnico.";
         }
+        return (data, Error, Causa, Solucion);
     }
+
+
 
     /// <summary>
     /// Elimina las direcciones asociadas a un cliente.
@@ -193,124 +261,185 @@ public static class WooServiceBL
     /// <param name="_context">Conexión a base de datos local.</param>
     /// <param name="direcciones">Lista de direcciones a quitar del cliente.</param>
     /// <returns>True si la operación no produjo errores, de lo contratrio False.</returns>
-    private static (bool, string) BorrarDireccionesDelCliente(WooCommerceContext _context, List<ClienteDireccion> direcciones)
+    private static (bool, string, string, string) BorrarDireccionesDelCliente(WooCommerceContext _context, List<ClienteDireccion> direcciones)
     {
+        if (direcciones.Count == 0) return (true, "", "", "");
+
+        string Error = String.Empty, Causa = String.Empty, Solucion = String.Empty;
+        bool ok = false;
         try
         {
             _context.ClienteDirecciones.RemoveRange(direcciones);
-            return (true, "");
+            ok = true;
         }
         catch (Exception ex)
         {
-            return (false, "Error al borrar direcciones del cliente." + Global.GetExceptionError(ex));
+            Error = "Error al borrar direcciones del cliente.";
+            Causa = $"La base de datos emitio un error al intentar borrar direcciones del clientes. {direcciones[0].ClienteId}" + Environment.NewLine +
+                    Global.GetExceptionError(ex);
+            Solucion = "Verificar que la tabla Cliente_Direccion este disponible. " + Environment.NewLine +
+                       "(Ver la conexión, que exista la tabla y que la base de datos este disponible)";
         }
+        return (ok, Error, Causa, Solucion);
     }
 
     /// <summary>
     /// 
     /// </summary>
-    /// <param name="logger">Se utiliza para registro de eventos en el sistema.</param>
+    /// <param name="logger">Se utiliza para registro de eventos en el sistema.</param>}
     /// <param name="_context">Conexión a base de datos arimany-woocommerce.</param>
     /// <param name="wooPedido">Datos del pedido obtenidos del portal web.</param>
     /// <returns>El registro creado o actualizado. Null si ocurre un error.</returns>
-    public static async Task<(WooPedido?, string, string)> CreateOrUpdateWooPedido(WooCommerceContext _context,
+    public static async Task<(WooPedido?, string, string, string)> CreateOrUpdateWooPedido(WooCommerceContext _context,
                                                                                     AXContext aXContext,
                                                                                     Order pedido,
                                                                                     ParametrosClientesNuevosWEB ParamsClientes,
                                                                                     ParametrosWooCommerce? ParametrosLineasPedido,
                                                                                     AppSettings appsets)
     {
-        _context.Database.BeginTransaction();
-        try
+        String Error = String.Empty, Causa = String.Empty, Solucion = String.Empty;
+        WooPedido? wooPedido = null;
+
+
+        var strategy = _context.Database.CreateExecutionStrategy();
+        bool changeState = false;
+
+        await strategy.ExecuteAsync(async () =>
+            {
+
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
+                    int pedidoWooId = ((int?)pedido.id) ?? 0;
+                    var data = await _context.WooPedidos.FirstOrDefaultAsync(c => c.WooId == pedidoWooId);
+
+                    if (data != null)
+                    {
+                        Causa = $"El pedido {pedidoWooId} ya existe en la base de datos.";
+                        Solucion = "No se puede crear un pedido que ya existe.";
+                        await transaction.RollbackAsync();
+                        return;
+                    }
+                    changeState = true;
+                    /// Pedido Nuevo, procesar y registrar en base de datos local, los datos del cliente,
+                    /// que vienen el pedido.
+
+                    (Cliente? cliente, Error, Causa, Solucion) = await CreateOrUpdateWooCliente(_context, aXContext, appsets, pedido, ParamsClientes);
+
+                    /// Si ocurre un error al crear o actualizar el cliente, entonces retornar el error.
+                    if (!Global.StrIsBlank(Error))
+                    {
+                        await transaction.RollbackAsync();
+                        return;
+                    }
+
+                    /// Generar ID de pedido local.
+                    (long correl, int intcorrelativo, Error, Causa, Solucion) = await GenerateLocalOrderId(_context);
+                    if (correl == 0)
+                    {
+                        await transaction.RollbackAsync();
+                        return;
+                    }
+
+                    wooPedido!.PedidoId = 0;
+                    wooPedido.WooId = pedidoWooId;
+                    wooPedido.WooClienteId = ((int?)pedido.customer_id) ?? 0;
+                    wooPedido.ClienteId = cliente!.ClienteId;
+                    wooPedido.WooKey = pedido.order_key;
+                    wooPedido.WooEstado = pedido.status;
+                    wooPedido.WooCantidadProducto = pedido.line_items.Count;
+                    wooPedido.WooTotal = pedido.total ?? 0;
+                    wooPedido.WooTituloMetodoPago = pedido.payment_method_title;
+                    wooPedido.WooMetodoPago = pedido.payment_method;
+                    wooPedido.WooJSON = JsonSerializer.Serialize(pedido);
+                    wooPedido.Operado = false;
+                    wooPedido.SincronizarProducto = false;
+                    wooPedido.GenerarEncabezadoJSON = false;
+                    wooPedido.GenerarDetalleJSON = false;
+                    wooPedido.WooFecha = pedido.date_created!.Value;
+                    wooPedido.Fecha = DateTime.Now;
+                    wooPedido.Correlativo = intcorrelativo;
+                    wooPedido.PedidoId = correl;
+                    wooPedido.Cliente = cliente;
+
+
+                    // Agregar producto por cargo de envio.
+                    decimal CargoPorEnvio = pedido.shipping_total ?? 0;
+
+                    (bool ok, Error, Causa, Solucion) = await AgregarProductosWoo(aXContext, pedido, wooPedido, ParametrosLineasPedido!.CodigoDeCargosPorEnvio, CargoPorEnvio);
+
+                    if (!ok)
+                    {
+                        await transaction.RollbackAsync();
+                        wooPedido = null;
+                        return;
+                    }
+                    _context.WooPedidos.Add(wooPedido);
+                    await _context.SaveChangesAsync();
+
+                    /// Crear registro de pedido en base de datos local.
+                    (Pedido? pedidoLocal, Error, Causa, Solucion) = await CreateOrUpdatePedido(_context, wooPedido, appsets.Pais);
+                    if (Global.StrIsBlank(Error))
+                    {
+                        await transaction.RollbackAsync();
+                        wooPedido = null;
+                        return;
+                    }
+
+                    // Registrar pedido en Sistema AX.
+                    (ok, Error, Causa, Solucion) = await CrearPedidoEnAX(_context, appsets, ParamsClientes, wooPedido, pedidoLocal!);
+                    if (!ok)
+                    {
+                        await transaction.RollbackAsync();
+                        wooPedido = null;
+                        return;
+                    }
+
+                    await transaction.CommitAsync();
+
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    Error = $"No se actualizó o creó pedido.\n WOOID: {pedido.id}, cliente: {pedido.billing.first_name} {pedido.billing.last_name}";
+                    Causa = "Se produjo un error al intentar actualizar o crear pedido." + Environment.NewLine + Global.GetExceptionError(ex);
+                    Solucion = "LLamar a soporte IT.";
+                    wooPedido = null;
+                    await transaction.RollbackAsync();
+                    return;
+                }
+            });
+        /// Actualizar el estado del pedido en woocommerce (arimany.com) a procesando.
+        if (changeState)
         {
-            int pedidoWooId = ((int?)pedido.id) ?? 0;
-            var data = await _context.WooPedidos.FirstOrDefaultAsync(c => c.WooId == pedidoWooId);
 
-            WooPedido wooPedido = new();
-            if (data != null) return (wooPedido, "", "Pedido ya se registro"); // Pedido ya existe.
-
-            /// Pedido Nuevo, procesar y registrar en base de datos local, los datos del cliente,
-            /// que vienen el pedido.
-
-            (Cliente? cliente, string msg, String warning) = await CreateOrUpdateWooCliente(_context, aXContext, appsets, pedido, ParamsClientes);
-
-            /// Si ocurre un error al crear o actualizar el cliente, entonces retornar el error.
-            if (!Global.StrIsBlank(msg))
+            var wooprovider = new WooProvider(appsets.WooURL, appsets.WooConsumerKey, appsets.WooConsumerSecret);
+            if (!Global.StrIsBlank(wooprovider.GetMsgError))
             {
-                _context.Database.RollbackTransaction();
-                return (null, msg, warning);
+                Error = wooprovider.GetMsgError;
+                Causa = "Error al actualizar el estado del pedido en el portal web.";
+                Solucion = "Verificar la conexión a internet." + Environment.NewLine +
+                           "Verificar que el portal web este disponible." + Environment.NewLine +
+                           "Verificar que el servicio de woocommerce este disponible.";
             }
-
-            /// Generar ID de pedido local.
-            (long correl, int intcorrelativo, msg) = await GenerateLocalOrderId(_context);
-            if (correl == 0)
+            else
             {
-                _context.Database.RollbackTransaction();
-                return (null, msg, warning);
+                bool ok = await wooprovider.ActualizarEstadoPedido(pedido.id ?? 0, "processing");
+                if (!ok)
+                {
+                    Error = "Error al intentar cambiar el estado del pedido en el portal web.";
+                    Causa = "Se produjo un erro durante la actualización." + wooprovider.GetMsgError;
+                    Solucion = "Verificar la conexión a internet." + Environment.NewLine +
+                               "Verificar que el portal web este disponible." + Environment.NewLine +
+                               "Verificar que el servicio de woocommerce este disponible." + Environment.NewLine +
+                               "Verificar el estado del peido en el portal web." +
+                               "Llamar a soporte IT.";
+
+                }
             }
-
-            wooPedido.PedidoId = 0;
-            wooPedido.WooId = pedidoWooId;
-            wooPedido.WooClienteId = ((int?)pedido.customer_id) ?? 0;
-            wooPedido.ClienteId = cliente!.ClienteId;
-            wooPedido.WooKey = pedido.order_key;
-            wooPedido.WooEstado = pedido.status;
-            wooPedido.WooCantidadProducto = pedido.line_items.Count;
-            wooPedido.WooTotal = pedido.total ?? 0;
-            wooPedido.WooTituloMetodoPago = pedido.payment_method_title;
-            wooPedido.WooMetodoPago = pedido.payment_method;
-            wooPedido.WooJSON = JsonSerializer.Serialize(pedido);
-            wooPedido.Operado = false;
-            wooPedido.SincronizarProducto = false;
-            wooPedido.GenerarEncabezadoJSON = false;
-            wooPedido.GenerarDetalleJSON = false;
-            wooPedido.WooFecha = pedido.date_created!.Value;
-            wooPedido.Fecha = DateTime.Now;
-            wooPedido.Correlativo = intcorrelativo;
-            wooPedido.PedidoId = correl;
-            wooPedido.Cliente = cliente;
-
-
-            // Agregar producto por cargo de envio.
-            decimal CargoPorEnvio = pedido.shipping_total ?? 0;
-
-            (bool ok, msg) = await AgregarProductosWoo(aXContext, pedido, wooPedido, ParametrosLineasPedido!.CodigoDeCargosPorEnvio, CargoPorEnvio);
-
-            if (!ok)
-            {
-                _context.Database.RollbackTransaction();
-                return (null, msg, warning);
-            }
-            _context.WooPedidos.Add(wooPedido);
-            await _context.SaveChangesAsync();
-
-            /// Crear registro de pedido en base de datos local.
-            (Pedido? pedidoLocal, msg) = await CreateOrUpdatePedido(_context, wooPedido, appsets.Pais);
-            if (Global.StrIsBlank(msg))
-            {
-                _context.Database.RollbackTransaction();
-                return (null, msg, warning);
-            }
-
-            // Registrar pedido en Sistema AX.
-            (ok, msg) = await CrearPedidoEnAX(_context, appsets, ParamsClientes, wooPedido, pedidoLocal!);
-            if (!ok)
-            {
-                _context.Database.RollbackTransaction();
-                return (null, msg, warning);
-            }
-
-            _context.Database.CommitTransaction();
-            return (wooPedido, "", warning);
-        }
-        catch (Exception ex)
-        {
-            string msg = $"Error al crear o actualizar pedido.\n WOOID: {pedido.id}, cliente: {pedido.billing.first_name} {pedido.billing.last_name}" +
-                         Environment.NewLine + Global.GetExceptionError(ex);
-            _context.Database.RollbackTransaction();
-            return (null, msg, "");
         }
 
+        return (wooPedido, Error, Causa, Solucion);
     }
 
     /// <summary>
@@ -320,13 +449,13 @@ public static class WooServiceBL
     /// <param name="pedido"></param>
     /// <param name="wooPedido"></param>
     /// <returns></returns>
-    private static async Task<(Boolean, string)> AgregarProductosWoo(AXContext aXContext,
+    private static async Task<(Boolean, string, string, string)> AgregarProductosWoo(AXContext aXContext,
                                                                      Order pedido,
                                                                      WooPedido wooPedido,
                                                                      String CodigoPorCargoEnvio,
                                                                      decimal CargoPorEnvio)
     {
-        string errors = "";
+        string Error = "", Causa = "", Solucion = "";
         string msgError = $"WooPedido: {pedido.id}, Cliente: {pedido.billing.first_name} {pedido.billing.last_name}." + Environment.NewLine;
         int i = 0;
         List<WooPedidoProducto> productos = [];
@@ -342,10 +471,12 @@ public static class WooServiceBL
             }
 
             // Verificar si existe el producto
-            (CatalogoProductos? producto, string msg) = await ServiciosAXBL.ObtenerCatalogoProductos(aXContext, item.sku);
+            (CatalogoProductos? producto, String msg, Causa, Solucion) = await ServiciosAXBL.ObtenerCatalogoProductos(aXContext, item.sku);
             if (producto is null)
             {
-                errors += msgError + msg + Environment.NewLine;
+                Error += msgError + msg + Environment.NewLine;
+                Causa += Causa + Environment.NewLine;
+                Solucion += Solucion + Environment.NewLine;
                 continue;
             }
 
@@ -355,7 +486,9 @@ public static class WooServiceBL
 
             if (precio == 0 || cantidad == 0)
             {
-                errors += msgError + $"Falta el precio o la cantidad, Producto: {item.sku}." + Environment.NewLine;
+                Error += msgError + Environment.NewLine + $"Falta el precio o la cantidad, Producto: {item.sku}." + Environment.NewLine;
+                Causa += Causa + Environment.NewLine + "Datos requeridos no proporcionados." + Environment.NewLine;
+                Solucion += Solucion + Environment.NewLine + "Asigne precio y la cantidad en el pedido del portal web";
                 continue;
             }
 
@@ -371,7 +504,7 @@ public static class WooServiceBL
                 WooPrecio = precio,
                 Operado = false
             };
-            if (Global.StrIsBlank(errors))
+            if (Global.StrIsBlank(Error))
             {
                 productos.Add(wooPedidoNuevo);
             }
@@ -381,7 +514,7 @@ public static class WooServiceBL
             productos.Add(new WooPedidoProducto() { WooSKU = CodigoPorCargoEnvio, WooNombre = "Cargo por envios", WooCantidad = 1, WooPrecio = CargoPorEnvio });
 
         wooPedido.Productos = productos;
-        return (!Global.StrIsBlank(errors), errors);
+        return (!Global.StrIsBlank(Error), Error, Causa, Solucion);
     }
 
 
@@ -393,17 +526,20 @@ public static class WooServiceBL
     /// <param name="wooCliente">Datos del cliente obtenidos del portal web, 
     /// para crear o actualizar un registro de cliente en base de datos local.</param>
     /// <returns>El registro del cliente, creado o actualizado. Null si ocurre un error</returns>
-    private static async Task<(Cliente?, string, string)> CreateOrUpdateWooCliente(WooCommerceContext _context, AXContext aXContext, AppSettings appsets, Order pedido, ParametrosClientesNuevosWEB ParamsClientes)
+    private static async Task<(Cliente?, string, string, string)> CreateOrUpdateWooCliente(WooCommerceContext _context, AXContext aXContext, AppSettings appsets, Order pedido, ParametrosClientesNuevosWEB ParamsClientes)
     {
         /// Llenar ficha del cliente, con datos del pedido obtenidos del portal web.
         Cliente wooCliente = LLenarFichaCliente(pedido);
-        String warning = "";
+
         String Error = "";
+        String Causa = "";
+        String Solucion = "";
 
         /// Crear o actualizar cliente en base de datos arimany-woocommerce.
         if (!Global.StrIsBlank(SMTPService.IsValidEmail(wooCliente.CorreoElectronico)))
         {
-            warning = "Correo electrónico no válido. No se asignará al cliente.";
+            Causa = "Correo electrónico no válido. No se asignará al cliente.";
+            Solucion = "Verificar el correo electrónico registrado en el portal web.";
             wooCliente.CorreoElectronico = "";
         }
 
@@ -412,27 +548,36 @@ public static class WooServiceBL
         try
         {
             // Buscar cliente por ID. de lo contrario buscar por NIT.
-            (Cliente? data, Error) = await BuscarClientePorId(_context, wooCliente.ClienteWooId, wooCliente.Nit);
+            (Cliente? data, Error, string causa, string solucion) = await BuscarClientePorId(_context, wooCliente.ClienteWooId, wooCliente.Nit);
 
             /// Si ocurre un error al buscar el cliente.
-            /// entonces retornar el error.
-            if (Global.StrIsBlank(Error)) return (null, Error, warning);
+            Causa += Causa.IsNullOrEmpty() ? causa : Environment.NewLine + causa;
+            Solucion += Solucion.IsNullOrEmpty() ? solucion : Environment.NewLine + solucion;
+            if (Global.StrIsBlank(Error))
+            {
+                return (null, Error, Causa, Solucion);
+            }
+
 
             /// No se encontró el cliente, crear uno nuevo.
             if (data is null)
             {
                 // Cliente Nuevo.  Generar ID de cliente local.
-                (long correl, Error) = await GenerateLocalClienteId(_context);
+                (long correl, Error, causa, solucion) = await GenerateLocalClienteId(_context);
+                Causa += Causa.IsNullOrEmpty() ? causa : Environment.NewLine + causa;
+                Solucion += Solucion.IsNullOrEmpty() ? solucion : Environment.NewLine + solucion;
                 if (correl == 0)
                 {
-                    return (null, Error, warning);
+                    return (null, Error, Causa, Solucion);
                 }
 
                 /// Buscar cliente en base de datos de AX.
-                (ClienteAX? clienteAX, Error) = await ServiciosAXBL.ObtenerClienteAX(aXContext, wooCliente.Nit);
+                (ClienteAX? clienteAX, Error, causa, solucion) = await ServiciosAXBL.ObtenerClienteAX(aXContext, wooCliente.Nit);
 
                 /// returnar si hay un error al buscar el cliente en AX.
-                if (Global.StrIsBlank(Error)) return (null, Error, warning);
+                Causa += Causa.IsNullOrEmpty() ? causa : Environment.NewLine + causa;
+                Solucion += Solucion.IsNullOrEmpty() ? solucion : Environment.NewLine + solucion;
+                if (Global.StrIsBlank(Error)) return (null, Error, Causa, Solucion);
 
                 if (clienteAX is not null) wooCliente.ClienteAXId = clienteAX!.Cliente;
 
@@ -453,7 +598,15 @@ public static class WooServiceBL
             await _context.SaveChangesAsync();
 
             ResultadoOperacionAX result = await axservice.CrearClienteWEB(wooCliente, ParamsClientes, appsets.Pais);
-            if (Global.StrIsBlank(result.ErrorMsg)) return (null, result.ErrorMsg, result.Advertencia);
+            if (Global.StrIsBlank(result.ErrorMsg))
+            {
+                Error = result.ErrorMsg;
+                Causa += Causa.IsNullOrEmpty() ? result.Advertencia : Environment.NewLine + result.Advertencia;
+                string soluccion = "Verifique el estado de error para conocer detalles del error." + Environment.NewLine +
+                                   "Y llame al administrador del sistema.";
+                Solucion += Solucion.IsNullOrEmpty() ? solucion : Environment.NewLine + solucion;
+                return (null, Error, Causa, Solucion);
+            }
             if (wooCliente.ClienteAXId != result.IdCliente)
             {
                 wooCliente.ClienteAXId = result.IdCliente;
@@ -466,13 +619,25 @@ public static class WooServiceBL
         }
         catch (Exception ex)
         {
-            String textError = $"Error al crear o actualizar cliente. ID: {wooCliente.ClienteId}, NIT: {wooCliente.Nit}";
-            return (null, textError + Environment.NewLine + Global.GetExceptionError(ex), warning);
+            Error = $"Error al crear o actualizar cliente. ID: {wooCliente.ClienteId}, NIT: {wooCliente.Nit}";
+            String causa = "La base de datos ha emitido un error al intentar guardar el cliente." + Environment.NewLine +
+                    Global.GetExceptionError(ex);
+            String solucion = "Verificar que la tabla Clientes este disponible." + Environment.NewLine +
+                          "Verificar que la base de datos arimany-woocommerce este disponible." + Environment.NewLine +
+                            "Verificar la conexión a la base de datos." +
+                            "Verificar que la tabla Clientes tenga permisos de escritura." + Environment.NewLine +
+                            "Verificar que la tabla Clientes no este bloqueada." + Environment.NewLine +
+                            "LLame al administrador del sistema.";
+
+            Causa += Causa.IsNullOrEmpty() ? causa : Environment.NewLine + causa;
+            Solucion += Solucion.IsNullOrEmpty() ? solucion : Environment.NewLine + solucion;
+
+            return (null, Error, Causa, Solucion);
         }
 
         /// Procesar direcciones de cliente
-        (List<ClienteDireccion> direcciones, string msg) = await ProcesarDireccionesDePedido(pedido, wooCliente, _context);
-        if (direcciones.Count == 0 || !Global.StrIsBlank(msg)) return (null, msg, warning);
+        (List<ClienteDireccion> direcciones, Error, Causa, Solucion) = await ProcesarDireccionesDePedido(pedido, wooCliente, _context);
+        if (direcciones.Count == 0 || !Global.StrIsBlank(Error)) return (null, Error, Causa, Solucion);
 
         /// Guardar direcciones de cliente.
         /// Si hay direcciones entonces guardarlas.
@@ -483,9 +648,6 @@ public static class WooServiceBL
             wooCliente.Direcciones = direcciones;
             await _context.SaveChangesAsync();
 
-            /// Registrar direcciones en AX.
-            warning = "";
-            Error = "";
 
             wooCliente.Direcciones.ForEach(async c =>
             {
@@ -497,19 +659,25 @@ public static class WooServiceBL
                     c.DireccionId = result.RecId;
                 }
                 Error += result.ErrorMsg + Environment.NewLine;
-                warning += result.Advertencia + Environment.NewLine;
+                Causa += result.Advertencia + Environment.NewLine;
+                Solucion += "Verifique que el servicio AIF de Dynamics Ax, este funcionado" + Environment.NewLine;
             });
-            if (!Global.StrIsBlank(Error)) return (null, Error, warning);
+            if (!Global.StrIsBlank(Error)) return (null, Error, Causa, Solucion);
         }
         catch (Exception ex)
         {
-            String textError = $"Error al guardar direcciones del cliente. ID: {wooCliente.ClienteId}, NIT: {wooCliente.Nit}";
-            return (null, textError + Environment.NewLine + Global.GetExceptionError(ex), warning);
+            Error = $"Se produjo un error al guardar direcciones del cliente. ID: {wooCliente.ClienteId}, NIT: {wooCliente.Nit}";
+            Causa = "La base de dato emitió un error." + Environment.NewLine + Global.GetExceptionError(ex);
+            Solucion = "Verificar que la tabla Cliente_Direccion este disponible." + Environment.NewLine +
+                          "Verificar que la base de datos arimany-woocommerce este disponible." + Environment.NewLine +
+                            "Verificar la conexión a la base de datos." +
+                            "Llame a sopore técnico.";
+            return (null, Error, Causa, Solucion);
         }
 
         //Sincronizar contactos en ax telefono y correo electrónico.
-        (bool ok, msg) = await CrearContactosEnAX(wooCliente, appsets);
-        return (wooCliente, "", warning + Environment.NewLine + msg);
+        (bool ok, Causa, Solucion) = await CrearContactosEnAX(wooCliente, appsets);
+        return (wooCliente, Error, Causa, Solucion);
     }
 
 
@@ -522,8 +690,10 @@ public static class WooServiceBL
     /// <param name="_context">Conexión a bif (Global.StrIsBlank(result.ErrorMsg) && c.TipoDireccion == (int)LogisticsLocationRoleType.Invoice) wooCliente.ase de datos arimany-woocommerce</param>
     /// <param name="pedido">Datos del pedido a registrar y preparar para sincronizar con AX</param>
     /// <returns>El registro guardado.</returns>
-    private static async Task<(Pedido?, string)> CreateOrUpdatePedido(WooCommerceContext _context, WooPedido WooPedido, String EmpresaId)
+    private static async Task<(Pedido?, string, String, string)> CreateOrUpdatePedido(WooCommerceContext _context, WooPedido WooPedido, String EmpresaId)
     {
+        String Error = "", Causa = "", Solucion = "";
+        Pedido? data = null;
         try
         {
             Pedido pedido = new()
@@ -544,7 +714,7 @@ public static class WooServiceBL
                 Operar = true,
                 OperadoAX = false
             };
-            var data = await _context.Pedidos.FirstOrDefaultAsync(c => c.Pedido_Id == pedido.Pedido_Id);
+            data = await _context.Pedidos.FirstOrDefaultAsync(c => c.Pedido_Id == pedido.Pedido_Id);
             if (data == null)
             {
                 _context.Pedidos.Add(pedido);
@@ -554,13 +724,24 @@ public static class WooServiceBL
                 _context.Pedidos.Update(pedido);
             }
             await _context.SaveChangesAsync();
-            return (pedido, "");
+            data = pedido;
         }
         catch (Exception ex)
         {
-            string msg = $"Error al crear o actualizar pedido. ID: {WooPedido.WooId}" + Environment.NewLine + Global.GetExceptionError(ex);
-            return (null, msg);
+            Error = "Error al crear o actualizar pedido.";
+            Causa = "Error al guardar registro de pedido en base de datos local." + Environment.NewLine +
+                    "la base de datos ha emitido un error" + Environment.NewLine +
+                    Global.GetExceptionError(ex);
+            Solucion = "Verificar que la tabla Pedido este disponible." + Environment.NewLine +
+                       "Verificar que la base de datos arimany-woocommerce este disponible." + Environment.NewLine +
+                       "Verificar la conexión a la base de datos." +
+                       "Verificar que la tabla Pedido tenga permisos de escritura." + Environment.NewLine +
+                       "Verificar que la tabla Pedido no este bloqueada." + Environment.NewLine +
+                       "LLame al administrador del sistema.";
+
+
         }
+        return (data, Error, Causa, Solucion);
     }
 
 
@@ -572,7 +753,7 @@ public static class WooServiceBL
     /// <param name="wooPedido"></param>
     /// <param name="pedido"></param>
     /// <returns></returns>
-    private static async Task<(Boolean, string)> CrearPedidoEnAX(WooCommerceContext _context, AppSettings appsets, ParametrosClientesNuevosWEB param, WooPedido wooPedido, Pedido pedido)
+    private static async Task<(Boolean, string, string, string)> CrearPedidoEnAX(WooCommerceContext _context, AppSettings appsets, ParametrosClientesNuevosWEB param, WooPedido wooPedido, Pedido pedido)
     {
         /// LLenar encabezado del pedido para enviar a AX.
         EncabezadoJSON encabezado = new()
@@ -604,8 +785,18 @@ public static class WooServiceBL
         /// Enviar pedido a AX.
         EstadoOperacionPedidoAX result = await pedidosService.CrearPedido(jsonEncabezado, jsonDetalle);
 
+        String Error = "", Causa = "", Solucion = "";
+
         /// Si ocurre un error al enviar el pedido a AX, entonces retornar el error.
-        if (result.MsgError is not null) return (false, result.MsgError);
+        if (!Global.StrIsBlank(result.MsgError))
+        {
+            Error = $"Se produjo un error al enviar el pedido al sistema AX. {wooPedido.WooId}";
+            Causa = "Error en el servicio AIF de AX al enviar el pedido de venta." + Environment.NewLine + result.MsgError;
+            Solucion = "Verificar que el servicio AIF de AX este disponible." + Environment.NewLine +
+                        "Verificar que el sistema AX este Activo." + Environment.NewLine +
+                        "Llame a soporte técnico.";
+            return (false, Error, Causa, Solucion);
+        }
 
         /// Actualizar registro de pedido en base de datos local.
         pedido.PedidoAXId = result.SalesId;
@@ -623,7 +814,7 @@ public static class WooServiceBL
         wooPedido.GenerarEncabezadoJSON = false;
         wooPedido.GenerarDetalleJSON = false;
         await _context.SaveChangesAsync();
-        return (true, "");
+        return (true, Error, Causa, Solucion);
     }
 
 
@@ -698,8 +889,14 @@ public static class WooServiceBL
         return cliente;
     }
 
-
-    private static async Task<(List<ClienteDireccion>, string)> ProcesarDireccionesDePedido(Order pedido, Cliente cliente, WooCommerceContext _context)
+    /// <summary>
+    /// Registrar direcciones de cliente en sistema AX.
+    /// </summary>
+    /// <param name="pedido">Pedido con datos de contacto de cliente</param>
+    /// <param name="cliente">Datos del cliente a procesar</param>
+    /// <param name="_context">Conexión a base de datos</param>
+    /// <returns>Listado de direcciones registradas o error si falla el servicio.</returns>
+    private static async Task<(List<ClienteDireccion>, string, string, string)> ProcesarDireccionesDePedido(Order pedido, Cliente cliente, WooCommerceContext _context)
     {
 
         /// Procesar dirección de facturación.
@@ -709,7 +906,10 @@ public static class WooServiceBL
 
         /// Obtener listado de direcciones en base de datos local.
 
-        (List<ClienteDireccion>? direccionesCliente, string Error) = await BuscarDireccionesCliente(_context, cliente.ClienteId);
+        String Error = "", Causa = "", Solucion = "";
+
+
+        (List<ClienteDireccion>? direccionesCliente, Error, Causa, Solucion) = await BuscarDireccionesCliente(_context, cliente.ClienteId);
         direccionesCliente ??= direccionesCliente = [];
 
         /// obtener dirección de facturación.
@@ -759,16 +959,19 @@ public static class WooServiceBL
         }
         if (Global.StrIsBlank(dirFacturacion.MunicipioAXId))
         {
-            return ([], "No se encontró el municipio de la dirección de facturación.");
+            Error = "No se encontró el municipio de la dirección de facturación.";
+            Causa = "Se produjo un error al buscar el municipio de la dirección de facturación.";
+            Solucion = "Verificar en el pedido registrado en el portal web. " + Environment.NewLine +
+                       "1. La dirección de facturación tenga un municipio asignado." + Environment.NewLine +
+                       "2. Que el municipio este registrado en la tabla de DepartamentosYMunicipios.";
+            return ([], Error, Causa, Solucion);
         }
-        (DepartamentosYMunicipios? municipio, string msgError) = await BuscarDepartamentoPorMunicipio(_context, dirFacturacion.MunicipioAXId);
-        if (Global.StrIsBlank(msgError)) return ([], msgError);
 
-        // terminar el municipio y departamento no existen.
-        if (municipio is null && Global.StrIsBlank(msgError))
-        {
-            return ([], $"No se encontró el municipio de la dirección de facturación {dirFacturacion.MunicipioAXId}.");
-        }
+
+        (DepartamentosYMunicipios? municipio, Error, Causa, Solucion) = await BuscarDepartamentoPorMunicipio(_context, dirFacturacion.MunicipioAXId);
+        if (Global.StrIsBlank(Error)) return ([], Error, Causa, Solucion);
+
+
         dirFacturacion.MunicipioAXId = municipio!.Municipio;
         dirFacturacion.DepartamentoAXId = municipio!.Departamento;
 
@@ -777,8 +980,8 @@ public static class WooServiceBL
 
         if (direccionesCliente.Count != 0)
         {
-            (bool ok, string msg) = BorrarDireccionesDelCliente(_context, direccionesCliente);
-            if (!ok) return ([], msg);
+            (bool ok, Error, Causa, Solucion) = BorrarDireccionesDelCliente(_context, direccionesCliente);
+            if (!ok) return ([], Error, Causa, Solucion);
         }
 
         dirFacturacion.ClienteId = cliente.ClienteId;
@@ -788,13 +991,19 @@ public static class WooServiceBL
 
         direccionesCliente.Add(dirFacturacion);
         direccionesCliente.Add(dirEnvio);
-        return (direccionesCliente, "");
+        return (direccionesCliente, Error, Causa, Solucion);
     }
 
-
-    private static async Task<(bool, string)> CrearContactosEnAX(Cliente wooClient, AppSettings appsets)
+    /// <summary>
+    /// Registrar datos de contacto del cliente en sistema AX, teléfono y correo electrónico.
+    /// </summary>
+    /// <param name="wooClient">Datos del cliente, y contactos asociados</param>
+    /// <param name="appsets">Configuración del servicio</param>
+    /// <returns>True si el registro fue exitoso, false de lo contrario.  
+    /// Si hay errores se devuelven un string con el texto y un string con posible solución.</returns>
+    private static async Task<(bool, string, string)> CrearContactosEnAX(Cliente wooClient, AppSettings appsets)
     {
-        String warning = "";
+        String Causa = "", Solucion = "";
 
         InfoContactoClienteJSON contacto;
 
@@ -812,11 +1021,16 @@ public static class WooServiceBL
             String jsontelefono = JsonSerializer.Serialize(contacto);
             AXClientesServices axservice = new(appsets);
             ResultadoOperacionAX result = await axservice.CrearContactoDeCliente(jsontelefono);
-            if (!Global.StrIsBlank(result.ErrorMsg)) warning += result.ErrorMsg + Environment.NewLine;
+            if (!Global.StrIsBlank(result.ErrorMsg))
+            {
+                Causa += "Error al crear teléfono En sistema AX" + Environment.NewLine + result.ErrorMsg + Environment.NewLine +
+                          (result.Advertencia.IsNullOrEmpty() ? "Advertencias: " + result.Advertencia : "");
+                Solucion += "Reporte el incidente al administrador del sistema.";
+            }
         }
 
         /// Registrar correo electrónico en ficha del cliente.
-        if (!Global.StrIsBlank(wooClient.Telefono))
+        if (!Global.StrIsBlank(wooClient.CorreoElectronico))
         {
             contacto = new()
             {
@@ -826,33 +1040,49 @@ public static class WooServiceBL
                 Dato = wooClient.CorreoElectronico,
                 EsPrimario = true
             };
-            String jsontelefono = JsonSerializer.Serialize(contacto);
+            String jsonCorreo = JsonSerializer.Serialize(contacto);
             AXClientesServices axservice = new(appsets);
-            ResultadoOperacionAX result = await axservice.CrearContactoDeCliente(jsontelefono);
-            if (!Global.StrIsBlank(result.ErrorMsg)) warning += result.ErrorMsg + Environment.NewLine;
+            ResultadoOperacionAX result = await axservice.CrearContactoDeCliente(jsonCorreo);
+            if (!Global.StrIsBlank(result.ErrorMsg))
+            {
+                Causa += "Error al crear email en sistema AX" + Environment.NewLine + result.ErrorMsg + Environment.NewLine +
+                         (result.Advertencia.IsNullOrEmpty() ? "Advertencias: " + result.Advertencia : "");
+                Solucion += "Reporte el incidente al administrador del sistema.";
+            }
         }
-        return (Global.StrIsBlank(warning), warning);
+        return (Global.StrIsBlank(Causa), Causa, Solucion);
     }
+
+
     /// <summary>
     /// Obtener los parametros del servicio, 
     /// para el registro de clientes en Dynamics AX.
     /// </summary>
     /// <param name="context">Conexión a base de datos arimany-woocommerce</param>
     /// <returns>Registro con parametros del sistema, o null si ocurre un error</returns>
-    public static async Task<(ParametrosWooCommerce?, string)> ObtenerParametros(WooCommerceContext context)
+    public static async Task<(ParametrosWooCommerce?, string, string, string)> ObtenerParametros(WooCommerceContext context)
     {
-        String mensajeError = string.Empty;
+        String Error = "", Causa = "", Solucion = "";
         try
         {
             var parametros = await context.ParametrosWooCommerce.FirstOrDefaultAsync();
 
-            if (parametros is not null) return (parametros, string.Empty);
-            mensajeError = "No se encontraron parametros";
+            if (parametros is not null) return (parametros, Error, Causa, Solucion);
+
+            Error = "No se pudo obtener un registro con parametros para el servicio";
+            Causa = "NO se encontro ningun registro al consultar tabla de ParametrosWooCommerce";
+            Solucion = "Agregue un registro con parametros del servicio web.  " + Environment.NewLine +
+                       "Asigne el código de producto que se utilizara para cargos por envio.";
         }
         catch (Exception ex)
         {
-            mensajeError = "Error al obtener parametros" + Environment.NewLine + Global.GetExceptionError(ex);
+            Error = "Se produjo un error al obtener parametros del servicio web.";
+            Causa = "La base de datos emitió un error al consultar la tabla de ParametrosWooCommerce." + Environment.NewLine +
+                    Global.GetExceptionError(ex);
+            Solucion = "1. Verificar, la disponibilidad de la tabla ParametrosWooCommerce." + Environment.NewLine +
+                       "2. Verfiicar la conexión a la base de datos arimany-woocommerce." + Environment.NewLine +
+                       "3. Notificar al administrador del sistema.";
         }
-        return (null, mensajeError);
+        return (null, Error, Causa, Solucion);
     }
 }

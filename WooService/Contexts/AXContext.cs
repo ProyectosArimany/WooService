@@ -1,6 +1,5 @@
 namespace WooService.Contexts;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using WooService.Models;
 
 public class AXContext(AppSettings appsettings) : DbContext

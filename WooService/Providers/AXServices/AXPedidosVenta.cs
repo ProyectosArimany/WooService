@@ -57,7 +57,7 @@ public class AXPedidosService(AppSettings appsets)
         return new EstadoOperacionPedidoAX()
         {
             Error = 1,
-            MsgError = msgError
+            MsgError = msgError,
         };
     }
 

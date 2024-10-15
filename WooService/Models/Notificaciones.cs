@@ -16,15 +16,14 @@ public class Notificaciones
     [Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public long NotificacionId { get; set; }
 
-    public DateTime FechaRegistro { get; set; } = DateTime.Now;
-
     /// <summary>
-    /// Identificador del pedido en WooCommerce.
+    /// Identificador de un pedido de venta en WooCommerce.
     /// </summary>
     public long WooPedidoId { get; set; }
 
     /// <summary>
-    /// Tipo notifiación. (Error, Warning)
+    /// Tipo notificación. (Error, Warning)
+    /// </summary>
     public string TipoNotificacion { get; set; } = "";
 
     /// <summary>

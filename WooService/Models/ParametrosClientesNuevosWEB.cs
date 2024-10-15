@@ -65,7 +65,7 @@ public class ParametrosClientesNuevosWEB
     /// Empleado responsable del cliente.
     /// </summary>
     [Column("MAINCONTACTWORKER")]
-    public string EmpleadoResponsable { get; set; } = "";
+    public long EmpleadoResponsable { get; set; }
 
     /// <summary>
     /// Indica si se debe limitar el crédito del cliente.

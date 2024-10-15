@@ -31,7 +31,7 @@ namespace WooService.Models
         /// SMTPPort, puerto del servidor SMTP. Utilzado para el
         /// envío de notificaciones por correo electrónico.
 
-        public string SMTPPort { get; set; } = "";
+        public int SMTPPort { get; set; }
 
         /// <summary>
         /// SMTPEnableSSL, indica si la conexión al servidor SMTP es cifrada.
@@ -128,6 +128,16 @@ namespace WooService.Models
         /// País de residencia del cliente.  CountryRegionId en Dynamics AX.
         /// </summary>
         public string Pais { get; set; } = "";
+
+        /// <summary>
+        /// Plantilla de correo electrónico para envío de notificaciones.
+        /// </summary>
+        public string EMAILTemplatePath { get; set; } = "";
+
+        /// <summary>
+        /// Tiempo de espera en minutos, entre cada ejecución del servicio.
+        /// </summary>
+        public int TiempoEsperaEnMinutos { get; set; } = 0;
     }
 }
 

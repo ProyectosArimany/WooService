@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Notificación de Error</title>
+    <title>${TipoNotificacion}</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -31,25 +31,33 @@
 </head>
 
 <body>
-    <h1>TRITON, S.A.</h1>
-    <h2>Servicio de descarga de pedidos del portal arimany.com</h2>
-    <h3>Notificación de ${TipoNotificacion}</h3>
+    <h2>
+        <span>
+            <br>TRITON, S.A.<br>
+            Notificaciones del servicio WooService (arimany.com).<br>
+        </span>
+    </h2>
+    <p>Estimado(a)</p>
 
-    <p>Estimado/a ${subject}:</p>
-
-    <p>Le informamos que el servicio WooService ha emitido una notificación de tipo ${TipoNotificacion}. A continuación,
+    <p>Le informamos que el servicio WooService ha emitido ${TipoNotificacion}. A continuación,
         se detalla la información relevante:</p>
-
+    <h3>No. de Pedido: ${WooPedidoId}</h3>
+    <h3>Error:</h3>
+    <p>${errorMessage}</p>
+    <h3>Posible causa:</h3>
+    <p>${PossibleCause}</p>
+    <h3>Posible soluci&oacute;n</h3>
     <p>${MessageBody}</p>
 
-    <p>Agradecemos su comprensión.</p>
+
+    <p>Agradecemos su comprensi&oacute;n.</p>
 
     <div class="footer">
         <p>Atentamente, <br> Departamento de TI</p>
     </div>
 
     <div class="footer">
-        <p>Este mensaje es informativo. Por favor, no responda a este correo.</p>
+        <p>Este mensaje es informativo. Por favor, no responda este correo.</p>
     </div>
 </body>
 

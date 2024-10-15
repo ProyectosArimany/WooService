@@ -4,18 +4,38 @@ using WooCommerceNET;
 using WooCommerceNET.WooCommerce.v3;
 using Microsoft.Extensions.Logging;
 using WooService.Utils;
+using System.Timers;
 
+/// <summary>
+/// Proveedor de servicios para administrar pedidos del protal arimany.com.
+/// </summary>
 public class WooProvider
 {
-    private readonly RestAPI _restApi;
-    private readonly WCObject _wooCommerceObject;
-    private readonly ILogger _logger;
+    /// <summary>
+    /// API de WooCommerce (arimany.com).
+    /// </summary>
+    private readonly RestAPI? _restApi;
+
+    /// <summary>
+    /// Objeto de acceso a la API de WooCommerce.
+    /// </summary>
+    private readonly WCObject? _wooCommerceObject;
+
+    /// <summary>
+    /// Mensajes de error producidos en el servicio.
+    /// </summary>
     private string MsgError;
+
+    /// <summary>
+    /// Obtiene el mensaje de error producido en el servicio.
+    /// </summary>
+    /// <returns>Texto con el error producido</returns>
+    public string GetMsgError { get => MsgError; }
 
     /// <summary>
     /// Listado de estados de pedidos en WooCommerce.
     /// </summary>
-    public readonly Dictionary<string, string> EstadosWooCommerce = new()
+    public static readonly Dictionary<string, string> EstadosWooCommerce = new()
     {
         {"pending", "pending"},
         {"processing", "processing"},
@@ -27,9 +47,15 @@ public class WooProvider
         { "empacando", "empacando"}
     };
 
-    public WooProvider(string wooCommerceApiUri, string wooCommerceApiKey, string wooCommerceApiSecret, ILogger logger)
+    /// <summary>
+    /// Obtiene el estado de un pedido en WooCommerce.
+    /// </summary>
+    /// <param name="status">Clave del estado</param>
+    /// <returns>Estado de pedido.</returns>
+    public static string getWoocommerceStatus(string status) => EstadosWooCommerce[status];
+
+    public WooProvider(string wooCommerceApiUri, string wooCommerceApiKey, string wooCommerceApiSecret)
     {
-        _logger = logger;
         MsgError = "";
         try
         {
@@ -38,9 +64,9 @@ public class WooProvider
         }
         catch (Exception ex)
         {
+            _restApi = null;
+            _wooCommerceObject = null;
             MsgError = Global.GetExceptionError(ex);
-            _logger.LogError(ex, "Error al inicializar WooProvider");
-            throw;
         }
     }
 
@@ -51,6 +77,12 @@ public class WooProvider
     /// <returns></returns>
     public async Task<List<Order>> ObtenerPedidos(string statusPedido)
     {
+        if (_wooCommerceObject == null)
+        {
+            MsgError = "el objeto _wooCommerceObject no ha sido inicializado.";
+            return [];
+        }
+
         MsgError = "";
         try
         {
@@ -63,13 +95,23 @@ public class WooProvider
         catch (Exception ex)
         {
             MsgError = "Error al obtener pedidos del portal web" + Environment.NewLine + Global.GetExceptionError(ex);
-            _logger.LogError(ex, "Error al obtener pedidos del portal web");
             return [];
         }
     }
 
+    /// <summary>
+    /// Actualiza el estado de un pedido en el portal web.
+    /// </summary>
+    /// <param name="orderId">Id del pedido en WooCommerce</param>
+    /// <param name="nuevoEstado">Estado a establecer en el pedido</param>
+    /// <returns>True si la operación se realizó con éxito, false de lo contrario.</returns>
     public async Task<bool> ActualizarEstadoPedido(ulong orderId, string nuevoEstado)
     {
+        if (_wooCommerceObject == null)
+        {
+            MsgError = "el objeto _wooCommerceObject no ha sido inicializado.";
+            return false;
+        }
         MsgError = "";
         try
         {
@@ -86,7 +128,6 @@ public class WooProvider
         {
             string msgError = $"Error al actualizar el estado del pedido {orderId}";
             MsgError = msgError + Environment.NewLine + Global.GetExceptionError(ex);
-            _logger.LogError(ex, "{Message}", msgError);
             return false;
         }
     }
