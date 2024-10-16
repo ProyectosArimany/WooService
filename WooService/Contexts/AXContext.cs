@@ -18,7 +18,7 @@ public class AXContext(AppSettings appsettings) : DbContext
     {
         modelBuilder.Entity<CatalogoProductos>()
             .HasKey(cp => cp.CodigoProducto);
-        modelBuilder.Entity<ClienteAX>().HasNoKey();
+        modelBuilder.Entity<ClienteAX>().ToTable("ClienteAX").HasNoKey();
         modelBuilder.Entity<ParametrosClientesNuevosWEB>().HasNoKey();
         modelBuilder.Entity<ParametrosClientesNuevosWEB>().Property(e => e.Bloqueo)
                                                           .HasConversion<int>();

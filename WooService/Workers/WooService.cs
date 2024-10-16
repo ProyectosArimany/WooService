@@ -22,8 +22,8 @@ public class WooServiceWorker(ILogger logger, AppSettings appsets, AXContext aXC
 
         /// Obtener lista de destinatarios para notificaciones.
         List<string> destinatariosDeNotificaciones = [.. appsets.EMAILAdmin.Split(';')];
-        /// Servicio de notificaciones.
 
+        /// Servicio de notificaciones.
         ErrorNotificationService notificacionesService = new(
                                                                 destinatariosDeNotificaciones,
                                                                 appsets.SMTPServer,
@@ -37,8 +37,10 @@ public class WooServiceWorker(ILogger logger, AppSettings appsets, AXContext aXC
                                                                 logger
                                                             );
 
+
         string Error, Causa, Solucion;
-        /// Cliente de WooCommerce.
+
+        /// Cliente para acceder al API de WooCommerce.
         WooProvider _wooProvider = new(appsets.WooURL, appsets.WooConsumerKey, appsets.WooConsumerSecret);
         if (!Global.StrIsBlank(_wooProvider.GetMsgError))
         {
@@ -48,24 +50,24 @@ public class WooServiceWorker(ILogger logger, AppSettings appsets, AXContext aXC
             notificacionesService.HandleError(new HandleErrorParams { ErrorMessage = Error, PossibleCause = Causa, SuggestedSolution = Solucion, TipoNotificacion = "Error", WooPedidoId = 0 });
             return;
         }
+
+        /// Parámetros de WooCommerce, para obtener código utilizado para cargos por envio.
+        (ParametrosWooCommerce? ParametrosLineasPedido, Error, Causa, Solucion) = await WooServiceBL.ObtenerParametros(context);
+        if (!Global.StrIsBlank(Error))
+        {
+            notificacionesService.HandleError(new HandleErrorParams { ErrorMessage = Error, PossibleCause = Causa, SuggestedSolution = Solucion, TipoNotificacion = "Error", WooPedidoId = 0 });
+            return;
+        }
+
+        /// Parámetros para creación de clientes nuevos, en sistema AX.
+        (ParametrosClientesNuevosWEB? ParametrosClientes, Error, Causa, Solucion) = await ServiciosAXBL.ObtenerParametrosClientesNuevosWEB(aXContext);
+        if (!Global.StrIsBlank(Error))
+        {
+            notificacionesService.HandleError(new HandleErrorParams { ErrorMessage = Error, PossibleCause = Causa, SuggestedSolution = Solucion, TipoNotificacion = "Error", WooPedidoId = 0 });
+            return;
+        }
         try
         {
-            /// Parámetros de WooCommerce, para obtener código utilizado para cargos por envio.
-            (ParametrosWooCommerce? ParametrosLineasPedido, Error, Causa, Solucion) = await WooServiceBL.ObtenerParametros(context);
-            if (!Global.StrIsBlank(Error))
-            {
-                notificacionesService.HandleError(new HandleErrorParams { ErrorMessage = Error, PossibleCause = Causa, SuggestedSolution = Solucion, TipoNotificacion = "Error", WooPedidoId = 0 });
-                return;
-            }
-
-            /// Parámetros para creación de clientes nuevos, en sistema AX.
-            (ParametrosClientesNuevosWEB? ParametrosClientes, Error, Causa, Solucion) = await ServiciosAXBL.ObtenerParametrosClientesNuevosWEB(aXContext);
-            if (!Global.StrIsBlank(Error))
-            {
-                notificacionesService.HandleError(new HandleErrorParams { ErrorMessage = Error, PossibleCause = Causa, SuggestedSolution = Solucion, TipoNotificacion = "Error", WooPedidoId = 0 });
-                return;
-            }
-
             /// Obtener pedidos del portal WooCommerce.
             var orders = await _wooProvider.ObtenerPedidos(OrderStatus);
             if (orders.Count == 0 && !Global.StrIsBlank(_wooProvider.GetMsgError))

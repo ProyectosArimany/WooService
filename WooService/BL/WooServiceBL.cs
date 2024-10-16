@@ -7,6 +7,7 @@ using WooCommerceNET.WooCommerce.v3;
 using WooService.Providers.AXServices;
 using WooService.Providers;
 using Microsoft.IdentityModel.Tokens;
+using System.Security.Cryptography.X509Certificates;
 
 
 namespace WooService.BL;
@@ -132,7 +133,7 @@ public static class WooServiceBL
         string Error = String.Empty, Causa = String.Empty, Solucion = String.Empty;
         try
         {
-            var data = await _context.DepartamentosYMunicipios.FirstOrDefaultAsync(c => c.Municipio == municipio);
+            var data = await _context.DepartamentosYMunicipios.FirstOrDefaultAsync(c => c.NombreMunicipio == municipio);
             if (data != null)
             {
                 return (data, Error, Causa, Solucion);
@@ -160,7 +161,7 @@ public static class WooServiceBL
     }
 
     /// <summary>
-    /// Busca un cliente por el ID asignado en el portal web (woocommerce) o NIT.
+    /// Busca un cliente por el ID asignado o NIT, La busqueda se realiza en base de datos local (arimany-woocommerce).
     /// </summary>
     /// <param name="logger">Se utiliza para registro de eventos en el sistema.</param>
     /// <param name="_context">Conexión a base de datos arimany-woocommerce</param>
@@ -189,10 +190,17 @@ public static class WooServiceBL
 
             if (cliente is null && !Global.StrIsBlank(NIT))
             {
-                cliente = await _context.Clientes.FirstOrDefaultAsync(c => c.ClienteId == clienteId || c.Nit == NIT);
+                (String nitNormalizado, Error, Causa, Solucion) = Global.NormaliceNIT(NIT);
+                if (!Global.StrIsBlank(Error)) return (null, Error, Causa, Solucion);
+
+                cliente = await _context.Clientes.FirstOrDefaultAsync(c => c.Nit == NIT);
+                if (cliente is null && nitNormalizado != NIT)
+                {
+                    cliente = await _context.Clientes.FirstOrDefaultAsync(c => c.Nit == nitNormalizado);
+                }
             }
 
-            if (cliente != null)
+            if (cliente == null)
             {
                 Error = $"";
                 Causa = "No se encontró el cliente. ID: {clienteId}, NIT: {NIT}." + Environment.NewLine +
@@ -230,7 +238,7 @@ public static class WooServiceBL
         try
         {
             data = await _context.ClienteDirecciones.Where(c => c.ClienteId == clienteId).ToListAsync();
-            if (data.Count != 0)
+            if (data.Count == 0)
             {
                 Error = "No se encontrarion direcciones para el cliente.";
                 Causa = "No existe un registro de direcciones para el cliente.";
@@ -261,21 +269,26 @@ public static class WooServiceBL
     /// <param name="_context">Conexión a base de datos local.</param>
     /// <param name="direcciones">Lista de direcciones a quitar del cliente.</param>
     /// <returns>True si la operación no produjo errores, de lo contratrio False.</returns>
-    private static (bool, string, string, string) BorrarDireccionesDelCliente(WooCommerceContext _context, List<ClienteDireccion> direcciones)
+    public static (bool, string, string, string) BorrarDireccionesDelCliente(WooCommerceContext _context, long cliente)
     {
-        if (direcciones.Count == 0) return (true, "", "", "");
+        if (cliente == 0) return (false, "Error en cliente", "No se suministro un ID.", "Asigne un ID de cliente valido.");
 
         string Error = String.Empty, Causa = String.Empty, Solucion = String.Empty;
         bool ok = false;
         try
         {
-            _context.ClienteDirecciones.RemoveRange(direcciones);
+            var direcciones = _context.ClienteDirecciones.Where(c => c.ClienteId == cliente).ToList();
+            if (direcciones.Count != 0)
+            {
+                _context.ClienteDirecciones.RemoveRange(direcciones);
+                _context.SaveChanges();
+            }
             ok = true;
         }
         catch (Exception ex)
         {
             Error = "Error al borrar direcciones del cliente.";
-            Causa = $"La base de datos emitio un error al intentar borrar direcciones del clientes. {direcciones[0].ClienteId}" + Environment.NewLine +
+            Causa = $"La base de datos emitio un error al intentar borrar direcciones del clientes. {cliente}" + Environment.NewLine +
                     Global.GetExceptionError(ex);
             Solucion = "Verificar que la tabla Cliente_Direccion este disponible. " + Environment.NewLine +
                        "(Ver la conexión, que exista la tabla y que la base de datos este disponible)";
@@ -424,7 +437,8 @@ public static class WooServiceBL
             }
             else
             {
-                bool ok = await wooprovider.ActualizarEstadoPedido(pedido.id ?? 0, "processing");
+                // bool ok = await wooprovider.ActualizarEstadoPedido(pedido.id ?? 0, "processing");
+                bool ok = true;  // TODO: Descomentar esta linea cuando se tenga la conexión con el portal web.
                 if (!ok)
                 {
                     Error = "Error al intentar cambiar el estado del pedido en el portal web.";
@@ -534,6 +548,8 @@ public static class WooServiceBL
         String Error = "";
         String Causa = "";
         String Solucion = "";
+        string causa = "";
+        string solucion = "";
 
         /// Crear o actualizar cliente en base de datos arimany-woocommerce.
         if (!Global.StrIsBlank(SMTPService.IsValidEmail(wooCliente.CorreoElectronico)))
@@ -548,12 +564,12 @@ public static class WooServiceBL
         try
         {
             // Buscar cliente por ID. de lo contrario buscar por NIT.
-            (Cliente? data, Error, string causa, string solucion) = await BuscarClientePorId(_context, wooCliente.ClienteWooId, wooCliente.Nit);
+            (Cliente? data, Error, causa, solucion) = await BuscarClientePorId(_context, wooCliente.ClienteWooId, wooCliente.Nit);
 
             /// Si ocurre un error al buscar el cliente.
             Causa += Causa.IsNullOrEmpty() ? causa : Environment.NewLine + causa;
             Solucion += Solucion.IsNullOrEmpty() ? solucion : Environment.NewLine + solucion;
-            if (Global.StrIsBlank(Error))
+            if (!Global.StrIsBlank(Error))
             {
                 return (null, Error, Causa, Solucion);
             }
@@ -571,13 +587,15 @@ public static class WooServiceBL
                     return (null, Error, Causa, Solucion);
                 }
 
+
                 /// Buscar cliente en base de datos de AX.
                 (ClienteAX? clienteAX, Error, causa, solucion) = await ServiciosAXBL.ObtenerClienteAX(aXContext, wooCliente.Nit);
 
                 /// returnar si hay un error al buscar el cliente en AX.
                 Causa += Causa.IsNullOrEmpty() ? causa : Environment.NewLine + causa;
                 Solucion += Solucion.IsNullOrEmpty() ? solucion : Environment.NewLine + solucion;
-                if (Global.StrIsBlank(Error)) return (null, Error, Causa, Solucion);
+
+                if (!Global.StrIsBlank(Error)) return (null, Error, Causa, Solucion);
 
                 if (clienteAX is not null) wooCliente.ClienteAXId = clienteAX!.Cliente;
 
@@ -597,37 +615,18 @@ public static class WooServiceBL
             }
             await _context.SaveChangesAsync();
 
-            ResultadoOperacionAX result = await axservice.CrearClienteWEB(wooCliente, ParamsClientes, appsets.Pais);
-            if (Global.StrIsBlank(result.ErrorMsg))
-            {
-                Error = result.ErrorMsg;
-                Causa += Causa.IsNullOrEmpty() ? result.Advertencia : Environment.NewLine + result.Advertencia;
-                string soluccion = "Verifique el estado de error para conocer detalles del error." + Environment.NewLine +
-                                   "Y llame al administrador del sistema.";
-                Solucion += Solucion.IsNullOrEmpty() ? solucion : Environment.NewLine + solucion;
-                return (null, Error, Causa, Solucion);
-            }
-            if (wooCliente.ClienteAXId != result.IdCliente)
-            {
-                wooCliente.ClienteAXId = result.IdCliente;
-                _context.Clientes.Update(wooCliente);
-                await _context.SaveChangesAsync();
-            }
-
-            _context.Clientes.Update(wooCliente);
-            await _context.SaveChangesAsync();
         }
         catch (Exception ex)
         {
             Error = $"Error al crear o actualizar cliente. ID: {wooCliente.ClienteId}, NIT: {wooCliente.Nit}";
-            String causa = "La base de datos ha emitido un error al intentar guardar el cliente." + Environment.NewLine +
-                    Global.GetExceptionError(ex);
-            String solucion = "Verificar que la tabla Clientes este disponible." + Environment.NewLine +
-                          "Verificar que la base de datos arimany-woocommerce este disponible." + Environment.NewLine +
-                            "Verificar la conexión a la base de datos." +
-                            "Verificar que la tabla Clientes tenga permisos de escritura." + Environment.NewLine +
-                            "Verificar que la tabla Clientes no este bloqueada." + Environment.NewLine +
-                            "LLame al administrador del sistema.";
+            causa = "La base de datos ha emitido un error al intentar guardar el cliente." + Environment.NewLine +
+                   Global.GetExceptionError(ex);
+            solucion = "Verificar que la tabla Clientes este disponible." + Environment.NewLine +
+                         "Verificar que la base de datos arimany-woocommerce este disponible." + Environment.NewLine +
+                           "Verificar la conexión a la base de datos." +
+                           "Verificar que la tabla Clientes tenga permisos de escritura." + Environment.NewLine +
+                           "Verificar que la tabla Clientes no este bloqueada." + Environment.NewLine +
+                           "LLame al administrador del sistema.";
 
             Causa += Causa.IsNullOrEmpty() ? causa : Environment.NewLine + causa;
             Solucion += Solucion.IsNullOrEmpty() ? solucion : Environment.NewLine + solucion;
@@ -636,17 +635,48 @@ public static class WooServiceBL
         }
 
         /// Procesar direcciones de cliente
-        (List<ClienteDireccion> direcciones, Error, Causa, Solucion) = await ProcesarDireccionesDePedido(pedido, wooCliente, _context);
-        if (direcciones.Count == 0 || !Global.StrIsBlank(Error)) return (null, Error, Causa, Solucion);
-
-        /// Guardar direcciones de cliente.
-        /// Si hay direcciones entonces guardarlas.
+        (List<ClienteDireccion> direcciones, Error, causa, solucion) = await ProcesarDireccionesDePedido(pedido, wooCliente, _context);
+        if (direcciones.Count == 0 || !Global.StrIsBlank(Error))
+        {
+            Causa += Causa.IsNullOrEmpty() ? causa : Environment.NewLine + causa;
+            Solucion += Solucion.IsNullOrEmpty() ? solucion : Environment.NewLine + solucion;
+            return (null, Error, Causa, Solucion);
+        }
+        // Eliminar direcciones anteriores del cliente. Para guardar las nuevas.
+        (bool ok, Error, causa, solucion) = BorrarDireccionesDelCliente(_context, wooCliente.ClienteId);
+        if (!ok)
+        {
+            Causa += Causa.IsNullOrEmpty() ? causa : Environment.NewLine + causa;
+            Solucion += Solucion.IsNullOrEmpty() ? solucion : Environment.NewLine + solucion;
+            return (null, Error, Causa, Solucion);
+        }
 
         try
         {
-            /// Crear o actualizar direcciones del cliente.
+            /// Asignar direcciones del cliente.
             wooCliente.Direcciones = direcciones;
             await _context.SaveChangesAsync();
+
+            /// Actualizar o registrar cliente en sistema AX, antes de registrar,
+            /// las direcciones, en sistema AX.
+            ResultadoOperacionAX result = await axservice.CrearClienteWEB(wooCliente, ParamsClientes, appsets.Pais);
+            if (Global.StrIsBlank(result.ErrorMsg))
+            {
+                Error = result.ErrorMsg;
+                Causa += Causa.IsNullOrEmpty() ? result.Advertencia : Environment.NewLine + result.Advertencia;
+                solucion = "Verifique el estado de error para conocer detalles del error." + Environment.NewLine +
+                                  "Y llame al administrador del sistema.";
+                Solucion += Solucion.IsNullOrEmpty() ? solucion : Environment.NewLine + solucion;
+                return (null, Error, Causa, Solucion);
+            }
+            // Si se encontró el cliente,  asignar el código de cliente de AX al cliente de woo.
+            if (wooCliente.ClienteAXId != result.IdCliente)
+            {
+                wooCliente.ClienteAXId = result.IdCliente;
+                _context.Clientes.Update(wooCliente);
+                await _context.SaveChangesAsync();
+            }
+
 
 
             wooCliente.Direcciones.ForEach(async c =>
@@ -676,7 +706,12 @@ public static class WooServiceBL
         }
 
         //Sincronizar contactos en ax telefono y correo electrónico.
-        (bool ok, Causa, Solucion) = await CrearContactosEnAX(wooCliente, appsets);
+        (ok, causa, solucion) = await CrearContactosEnAX(wooCliente, appsets);
+        if (!ok)
+        {
+            Causa += Causa.IsNullOrEmpty() ? causa : Environment.NewLine + causa;
+            Solucion += Solucion.IsNullOrEmpty() ? solucion : Environment.NewLine + solucion;
+        }
         return (wooCliente, Error, Causa, Solucion);
     }
 
@@ -908,9 +943,7 @@ public static class WooServiceBL
 
         String Error = "", Causa = "", Solucion = "";
 
-
-        (List<ClienteDireccion>? direccionesCliente, Error, Causa, Solucion) = await BuscarDireccionesCliente(_context, cliente.ClienteId);
-        direccionesCliente ??= direccionesCliente = [];
+        List<ClienteDireccion> direccionesCliente = [];
 
         /// obtener dirección de facturación.
         ClienteDireccion dirFacturacion = new() { TipoDireccion = LogisticsLocationRoleType.Invoice, ClienteId = cliente.ClienteId };
@@ -933,6 +966,7 @@ public static class WooServiceBL
             dirFacturacion.Ciudad = pedido.billing.city ?? "";
         }
 
+        // Direccion de envio.
         if (pedido.shipping is not null)
         {
             if (Global.StrIsBlank(dirFacturacion.Direccion))
@@ -940,14 +974,15 @@ public static class WooServiceBL
                 dirFacturacion.Direccion = pedido.shipping.address_1 ?? "";
                 dirFacturacion.DireccionComplemento = pedido.shipping.address_2 ?? "";
             }
-            if (Global.StrIsBlank(dirFacturacion.DepartamentoAXId)) dirFacturacion.DepartamentoAXId = pedido.shipping.state ?? "";
-            if (Global.StrIsBlank(dirFacturacion.MunicipioAXId)) dirFacturacion.MunicipioAXId = pedido.shipping.city ?? "";
-
             dirEnvio.Direccion = pedido.shipping.address_1 ?? "";
             dirEnvio.DireccionComplemento = pedido.shipping.address_2 ?? "";
             dirEnvio.DepartamentoAXId = pedido.shipping.state ?? "";
             dirEnvio.MunicipioAXId = pedido.shipping.city ?? "";
             dirEnvio.Ciudad = pedido.shipping.city ?? "";
+            if (Global.StrIsBlank(dirFacturacion.DepartamentoAXId)) dirFacturacion.DepartamentoAXId = dirEnvio.DepartamentoAXId;
+            if (Global.StrIsBlank(dirFacturacion.MunicipioAXId)) dirFacturacion.MunicipioAXId = dirEnvio.MunicipioAXId;
+
+
         }
         else
         {
@@ -969,25 +1004,29 @@ public static class WooServiceBL
 
 
         (DepartamentosYMunicipios? municipio, Error, Causa, Solucion) = await BuscarDepartamentoPorMunicipio(_context, dirFacturacion.MunicipioAXId);
-        if (Global.StrIsBlank(Error)) return ([], Error, Causa, Solucion);
+        if (Global.StrIsBlank(Error)) return ([], "Dirección de Facturación." + Environment.NewLine + Error, Causa, Solucion);
 
-
-        dirFacturacion.MunicipioAXId = municipio!.Municipio;
-        dirFacturacion.DepartamentoAXId = municipio!.Departamento;
-
-        dirEnvio.MunicipioAXId = dirFacturacion.MunicipioAXId;
-        dirEnvio.DepartamentoAXId = dirFacturacion.DepartamentoAXId;
-
-        if (direccionesCliente.Count != 0)
-        {
-            (bool ok, Error, Causa, Solucion) = BorrarDireccionesDelCliente(_context, direccionesCliente);
-            if (!ok) return ([], Error, Causa, Solucion);
-        }
 
         dirFacturacion.ClienteId = cliente.ClienteId;
         dirFacturacion.Cliente = cliente;
+        dirFacturacion.MunicipioAXId = municipio!.Municipio;
+        dirFacturacion.DepartamentoAXId = municipio!.Departamento;
+
         dirEnvio.ClienteId = cliente.ClienteId;
         dirEnvio.Cliente = cliente;
+
+
+        if (dirEnvio.Ciudad != dirFacturacion.Ciudad)
+        {
+            (municipio, Error, Causa, Solucion) = await BuscarDepartamentoPorMunicipio(_context, dirEnvio.MunicipioAXId);
+            if (Global.StrIsBlank(Error)) return ([], "Dirección de envío." + Environment.NewLine + Error, Causa, Solucion);
+
+        }
+        else
+        {
+            dirEnvio.MunicipioAXId = dirFacturacion.MunicipioAXId;
+            dirEnvio.DepartamentoAXId = dirFacturacion.DepartamentoAXId;
+        }
 
         direccionesCliente.Add(dirFacturacion);
         direccionesCliente.Add(dirEnvio);

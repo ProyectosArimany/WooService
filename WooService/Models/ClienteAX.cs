@@ -1,7 +1,7 @@
 namespace WooService.Models
 {
     /// <summary>
-    /// Ficha de clientes en sistema AX
+    /// Ficha de clientes en sistema AX (Vista solo campos necesarios).
     /// </summary>
     public class ClienteAX
     {

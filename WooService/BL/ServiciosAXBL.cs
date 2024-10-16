@@ -47,31 +47,41 @@ public static class ServiciosAXBL
     /// <param name="axContext">Conexión a base de datos de sistema AX.</param>
     /// <param name="cliente">Código del cliene en AX, a consultar.</param>
     /// <returns>El cliente encontrado, o null si ocurre algún error.</returns>
-    public static async Task<(ClienteAX?, string, string, string)> ObtenerClienteAX(AXContext axContext, String cliente)
+    public static async Task<(ClienteAX?, string, string, string)> ObtenerClienteAX(AXContext axContext, String NIT)
     {
         String Error = "", Causa = "", Solucion = "";
         ClienteAX? clienteAX = null;
 
+        (String nuevoNit, Error, Causa, Solucion) = Global.NormaliceNIT(NIT);
+        if (!Global.StrIsBlank(Error)) return (clienteAX, Error, Causa, Solucion);
+
         try
         {
-            clienteAX = await axContext.ClientesAX.FirstOrDefaultAsync(c => c.Cliente == cliente);
+            // Buscar cliente por NIT sin normalizar.
+            clienteAX = await axContext.ClientesAX.FirstOrDefaultAsync(c => c.NIT == NIT);
+            if (clienteAX is null && !nuevoNit.Equals(NIT))
+            {
+                // Buscar cliente por NIT normalizado.
+                clienteAX = await axContext.ClientesAX.FirstOrDefaultAsync(c => c.NIT == nuevoNit);
+            }
             if (clienteAX is null)
             {
                 Causa = "No  existe el cliente, en el catálogo de clientes del sistema AX.";
                 Solucion = "Verifique que el cliente exista en el catálogo de productos de Dynamics AX." + Environment.NewLine +
                            "Verifire que sku en el pedido de arimanycom, sea correcto.";
-                return (clienteAX, Error, Causa, Solucion);
+
             }
+
         }
         catch (Exception ex)
         {
             Error = "Error al consultar cliente en sistema AX.";
-            Causa = $"La base de datos emitió errores al consultar el cliente {cliente}." + Environment.NewLine + Global.GetExceptionError(ex);
+            Causa = $"La base de datos emitió errores al consultar el cliente con NIT {NIT}." + Environment.NewLine + Global.GetExceptionError(ex);
             Solucion = "Verifique que la base de datos de Dynamics AX este disponible." + Environment.NewLine +
                        "Que este creada la vista ClientesAX en la base de datos de Dynamics AX." + Environment.NewLine +
                        "Y llame al administrador del sistema.";
         }
-        return (null, Error, Causa, Solucion);
+        return (clienteAX, Error, Causa, Solucion);
     }
 
     /// <summary>
@@ -107,7 +117,5 @@ public static class ServiciosAXBL
         }
         return (parametros, Error, Causa, Solucion);
     }
-
-
 
 }
