@@ -80,7 +80,7 @@ public static class WooServiceBL
     /// un correlativo de 3 digitos.
     /// </summary>
     /// <returns>Tuple con el ID del cliente generado, o Cero y un mensaje de error (si lo hubiese).</returns>
-    private static async Task<(long, string, string, string)> GenerateLocalClienteId(WooCommerceContext _context)
+    private static async Task<(long, int, string, string, string)> GenerateLocalClienteId(WooCommerceContext _context)
     {
         string Error = String.Empty, Causa = String.Empty, Solucion = String.Empty;
         try
@@ -94,19 +94,31 @@ public static class WooServiceBL
                 string strCorrel = DateTime.Now.ToString("yyyyMMdd") + "001";
                 if (long.TryParse(strCorrel, out long correl))
                 {
-                    return (correl, Error, Causa, Solucion);
+                    return (correl, 1, Error, Causa, Solucion);
                 }
                 else
                 {
                     Error = "Error al generar ID de Cliente local.";
                     Causa = $"Valor que produjo el error de conversión {strCorrel}.";
                     Solucion = $"Verificar si el valor de correlativo no excede {int.Max}.";
-                    return (0, Error, Causa, Solucion);
+                    return (0, 0, Error, Causa, Solucion);
                 }
             }
             else
             {
-                return (data.ClienteId + 1, Error, Causa, Solucion);
+                long correl = data.ClienteId + 1;
+                string strCorrel = correl.ToString();
+                if (int.TryParse(strCorrel.AsSpan(strCorrel.Length - 3, 3), out int correlativo))
+                {
+                    return (correl, correlativo, Error, Causa, Solucion);
+                }
+                else
+                {
+                    Error = "Error al generar ID de cliente local";
+                    Causa = $"Valor que produjo el error de conversión {strCorrel}";
+                    Solucion = $"Verificar si el valor de correlativo no excede {int.Max}.";
+                    return (0, 0, Error, Causa, Solucion);
+                }
             }
         }
         catch (Exception ex)
@@ -115,7 +127,7 @@ public static class WooServiceBL
             Causa = $"Error al leer datos de cliente para genera correlativo." + Environment.NewLine +
                      Global.GetExceptionError(ex);
             Solucion = $"Verificar que la tabla Clientes este disponible,\n y que la base de datos este también disponible.";
-            return (0, Error, Causa, Solucion);
+            return (0, 0, Error, Causa, Solucion);
         }
     }
 
@@ -353,27 +365,28 @@ public static class WooServiceBL
                         await transaction.RollbackAsync();
                         return;
                     }
-
-                    wooPedido!.PedidoId = 0;
-                    wooPedido.WooId = pedidoWooId;
-                    wooPedido.WooClienteId = ((int?)pedido.customer_id) ?? 0;
-                    wooPedido.ClienteId = cliente!.ClienteId;
-                    wooPedido.WooKey = pedido.order_key;
-                    wooPedido.WooEstado = pedido.status;
-                    wooPedido.WooCantidadProducto = pedido.line_items.Count;
-                    wooPedido.WooTotal = pedido.total ?? 0;
-                    wooPedido.WooTituloMetodoPago = pedido.payment_method_title;
-                    wooPedido.WooMetodoPago = pedido.payment_method;
-                    wooPedido.WooJSON = JsonSerializer.Serialize(pedido);
-                    wooPedido.Operado = false;
-                    wooPedido.SincronizarProducto = false;
-                    wooPedido.GenerarEncabezadoJSON = false;
-                    wooPedido.GenerarDetalleJSON = false;
-                    wooPedido.WooFecha = pedido.date_created!.Value;
-                    wooPedido.Fecha = DateTime.Now;
-                    wooPedido.Correlativo = intcorrelativo;
-                    wooPedido.PedidoId = correl;
-                    wooPedido.Cliente = cliente;
+                    wooPedido = new WooPedido()
+                    {
+                        PedidoId = correl,
+                        WooId = pedidoWooId,
+                        WooClienteId = ((int?)pedido.customer_id) ?? 0,
+                        ClienteId = cliente!.ClienteId,
+                        WooKey = pedido.order_key,
+                        WooEstado = pedido.status,
+                        WooCantidadProducto = pedido.line_items.Count,
+                        WooTotal = pedido.total ?? 0,
+                        WooTituloMetodoPago = pedido.payment_method_title,
+                        WooMetodoPago = pedido.payment_method,
+                        WooJSON = JsonSerializer.Serialize(pedido),
+                        Operado = false,
+                        SincronizarProducto = false,
+                        GenerarEncabezadoJSON = false,
+                        GenerarDetalleJSON = false,
+                        WooFecha = pedido.date_created!.Value,
+                        Fecha = DateTime.Now,
+                        Correlativo = intcorrelativo,
+                        Cliente = cliente
+                    };
 
 
                     // Agregar producto por cargo de envio.
@@ -387,20 +400,21 @@ public static class WooServiceBL
                         wooPedido = null;
                         return;
                     }
-                    _context.WooPedidos.Add(wooPedido);
                     await _context.SaveChangesAsync();
 
                     /// Crear registro de pedido en base de datos local.
                     (Pedido? pedidoLocal, Error, Causa, Solucion) = await CreateOrUpdatePedido(_context, wooPedido, appsets.Pais);
-                    if (Global.StrIsBlank(Error))
+                    if (!Global.StrIsBlank(Error))
                     {
                         await transaction.RollbackAsync();
                         wooPedido = null;
                         return;
                     }
 
-                    // Registrar pedido en Sistema AX.
-                    (ok, Error, Causa, Solucion) = await CrearPedidoEnAX(_context, appsets, ParamsClientes, wooPedido, pedidoLocal!);
+                    // Registrar pedido en Sistema AX.  
+                    // TODO: Descomentar la siguiente línea cuando se tenga la conexión con AX.
+                    //    (ok, Error, Causa, Solucion) = await CrearPedidoEnAX(_context, appsets, ParamsClientes, wooPedido, pedidoLocal!);
+                    ok = true;
                     if (!ok)
                     {
                         await transaction.RollbackAsync();
@@ -423,36 +437,44 @@ public static class WooServiceBL
                 }
             });
         /// Actualizar el estado del pedido en woocommerce (arimany.com) a procesando.
-        if (changeState)
+        if (changeState && !Global.StrIsBlank(Error))
         {
 
             var wooprovider = new WooProvider(appsets.WooURL, appsets.WooConsumerKey, appsets.WooConsumerSecret);
             if (!Global.StrIsBlank(wooprovider.GetMsgError))
             {
-                Error = wooprovider.GetMsgError;
-                Causa = "Error al actualizar el estado del pedido en el portal web.";
-                Solucion = "Verificar la conexión a internet." + Environment.NewLine +
-                           "Verificar que el portal web este disponible." + Environment.NewLine +
-                           "Verificar que el servicio de woocommerce este disponible.";
+                Error += Global.StrIsBlank(Error) ? wooprovider.GetMsgError : Environment.NewLine + wooprovider.GetMsgError;
+
+                string causa = "Error al actualizar el estado del pedido en el portal web.";
+                Causa += Global.StrIsBlank(Causa) ? causa : Environment.NewLine + causa;
+
+                string solucion = "Verificar la conexión a internet." + Environment.NewLine +
+                                  "Verificar que el portal web este disponible." + Environment.NewLine +
+                                  "Verificar que el servicio de woocommerce este disponible.";
+
+                Solucion += Global.StrIsBlank(Solucion) ? solucion : Environment.NewLine + solucion;
             }
             else
             {
                 // bool ok = await wooprovider.ActualizarEstadoPedido(pedido.id ?? 0, "processing");
-                bool ok = true;  // TODO: Descomentar esta linea cuando se tenga la conexión con el portal web.
+                bool ok = true;  // TODO: Quitar esta línea y Descomentar la linea anterior cuando
+                                 // se tenga la conexión con el portal web.
                 if (!ok)
                 {
-                    Error = "Error al intentar cambiar el estado del pedido en el portal web.";
-                    Causa = "Se produjo un erro durante la actualización." + wooprovider.GetMsgError;
-                    Solucion = "Verificar la conexión a internet." + Environment.NewLine +
+                    string error = "Error al intentar cambiar el estado del pedido en el portal web.";
+                    string causa = "Se produjo un erro durante la actualización." + wooprovider.GetMsgError;
+                    string solucion = "Verificar la conexión a internet." + Environment.NewLine +
                                "Verificar que el portal web este disponible." + Environment.NewLine +
                                "Verificar que el servicio de woocommerce este disponible." + Environment.NewLine +
                                "Verificar el estado del peido en el portal web." +
                                "Llamar a soporte IT.";
+                    Error += Global.StrIsBlank(Error) ? error : Environment.NewLine + error;
+                    Causa += Global.StrIsBlank(Causa) ? causa : Environment.NewLine + causa;
+                    Solucion += Global.StrIsBlank(Solucion) ? solucion : Environment.NewLine + solucion;
 
                 }
             }
         }
-
         return (wooPedido, Error, Causa, Solucion);
     }
 
@@ -528,7 +550,7 @@ public static class WooServiceBL
             productos.Add(new WooPedidoProducto() { WooSKU = CodigoPorCargoEnvio, WooNombre = "Cargo por envios", WooCantidad = 1, WooPrecio = CargoPorEnvio });
 
         wooPedido.Productos = productos;
-        return (!Global.StrIsBlank(Error), Error, Causa, Solucion);
+        return (Global.StrIsBlank(Error), Error, Causa, Solucion);
     }
 
 
@@ -563,10 +585,10 @@ public static class WooServiceBL
         AXClientesServices axservice = new(appsets);
         try
         {
-            // Buscar cliente por ID. de lo contrario buscar por NIT.
+            // Buscar cliente por ID. de lo contrario buscar por NIT.  En base de datos local.
             (Cliente? data, Error, causa, solucion) = await BuscarClientePorId(_context, wooCliente.ClienteWooId, wooCliente.Nit);
 
-            /// Si ocurre un error al buscar el cliente.
+            /// Si ocurre un error al buscar el cliente, retornar.
             Causa += Causa.IsNullOrEmpty() ? causa : Environment.NewLine + causa;
             Solucion += Solucion.IsNullOrEmpty() ? solucion : Environment.NewLine + solucion;
             if (!Global.StrIsBlank(Error))
@@ -579,7 +601,7 @@ public static class WooServiceBL
             if (data is null)
             {
                 // Cliente Nuevo.  Generar ID de cliente local.
-                (long correl, Error, causa, solucion) = await GenerateLocalClienteId(_context);
+                (long correl, int correlId, Error, causa, solucion) = await GenerateLocalClienteId(_context);
                 Causa += Causa.IsNullOrEmpty() ? causa : Environment.NewLine + causa;
                 Solucion += Solucion.IsNullOrEmpty() ? solucion : Environment.NewLine + solucion;
                 if (correl == 0)
@@ -600,6 +622,7 @@ public static class WooServiceBL
                 if (clienteAX is not null) wooCliente.ClienteAXId = clienteAX!.Cliente;
 
                 wooCliente.ClienteId = correl;
+                wooCliente.Correlativo = correlId;
                 _context.Clientes.Add(wooCliente);
             }
             else
@@ -657,6 +680,9 @@ public static class WooServiceBL
             wooCliente.Direcciones = direcciones;
             await _context.SaveChangesAsync();
 
+            // Crear o actualizar cliente en AX.
+            // TODO: QUITAR PARA ACTUALIZAR EN PRODUCCION.
+            return (wooCliente, Error, Causa, Solucion);
             /// Actualizar o registrar cliente en sistema AX, antes de registrar,
             /// las direcciones, en sistema AX.
             ResultadoOperacionAX result = await axservice.CrearClienteWEB(wooCliente, ParamsClientes, appsets.Pais);
@@ -747,7 +773,11 @@ public static class WooServiceBL
                 Factura = "",
                 Despachado = false,
                 Operar = true,
-                OperadoAX = false
+                OperadoAX = false,
+                FechaHoraGenerarEncabezado = DateTime.Now,
+                FechaHoraGenerarDetalle = DateTime.Now,
+                Fecha = DateTime.Now,
+                Correlativo = WooPedido.Correlativo
             };
             data = await _context.Pedidos.FirstOrDefaultAsync(c => c.Pedido_Id == pedido.Pedido_Id);
             if (data == null)
@@ -1004,7 +1034,7 @@ public static class WooServiceBL
 
 
         (DepartamentosYMunicipios? municipio, Error, Causa, Solucion) = await BuscarDepartamentoPorMunicipio(_context, dirFacturacion.MunicipioAXId);
-        if (Global.StrIsBlank(Error)) return ([], "Dirección de Facturación." + Environment.NewLine + Error, Causa, Solucion);
+        if (!Global.StrIsBlank(Error)) return ([], "Dirección de Facturación." + Environment.NewLine + Error, Causa, Solucion);
 
 
         dirFacturacion.ClienteId = cliente.ClienteId;
@@ -1019,7 +1049,7 @@ public static class WooServiceBL
         if (dirEnvio.Ciudad != dirFacturacion.Ciudad)
         {
             (municipio, Error, Causa, Solucion) = await BuscarDepartamentoPorMunicipio(_context, dirEnvio.MunicipioAXId);
-            if (Global.StrIsBlank(Error)) return ([], "Dirección de envío." + Environment.NewLine + Error, Causa, Solucion);
+            if (!Global.StrIsBlank(Error)) return ([], "Dirección de envío." + Environment.NewLine + Error, Causa, Solucion);
 
         }
         else

@@ -22,9 +22,9 @@ namespace WooService.Models
         /// Codigo base del producto. (Código de producto NO variante).
         /// </summary>
         [Column("ItemId")]
-        public decimal CodigoBase { get; set; } = 0;
+        public string CodigoBase { get; set; } = "";
         /// <summary>
-        /// Numero de variante del producto <see cref="ItemId"/>.
+        /// Numero de variante del producto <see cref="CodigoBase"/>.
         /// </summary>
         [Column("RetailVariantId")]
         public string Variante { get; set; } = "";

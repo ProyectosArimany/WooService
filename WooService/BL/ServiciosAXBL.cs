@@ -23,6 +23,7 @@ public static class ServiciosAXBL
         try
         {
             articulo = await axContext.CatalogoProductos.FirstOrDefaultAsync(cp => cp.CodigoProducto == producto);
+
             if (articulo is null)
             {
                 Causa = $"No se encontró el producto {producto}. en el catálogo de productos.";

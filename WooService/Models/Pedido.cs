@@ -24,7 +24,7 @@ public class Pedido
     /// <summary>
     /// Relación con la entidad WooPedido.
     /// </summary>
-    [ForeignKey("WooPedidoId")]
+    [ForeignKey("Woo_Pedido_Id")]
     public WooPedido WooPedido { get; set; } = null!;
 
     /// <summary>
@@ -101,4 +101,38 @@ public class Pedido
     /// </summary>
     [Column("Operado_AX")]
     public bool OperadoAX { get; set; }
+
+    /// <summary>
+    /// Fecha y hora en la que se generó, 
+    /// el encabezado del pedido, para enviar a AX en formato json.
+    /// </summary>
+    [Column("Fecha_Hora_Generar_Encabezado")]
+    public DateTime? FechaHoraGenerarEncabezado { get; set; }
+
+    /// <summary>
+    /// Fecha y hora en la que se generó el detalle del pedido,
+    /// para enviar a AX en formato json.
+    /// </summary>
+
+    [Column("Fecha_Hora_Generar_Detalle")]
+    public DateTime? FechaHoraGenerarDetalle { get; set; }
+
+    /// <summary>
+    /// Fecha y hora en la que se envió el pedido a AX.
+    /// </summary>
+    [Column("Fecha_Hora_Sincronizado_AX")]
+    public DateTime? FechaHoraSincronizadoAX { get; set; }
+
+    /// <summary>
+    /// Fecha y hora en la que se registro el pedido en base de datos local.
+    /// </summary>
+    public DateTime Fecha { get; set; }
+
+    /// <summary>
+    /// Correlativo del pedido, diario, comenzando en 1.
+    /// </summary>
+    public int Correlativo { get; set; }
+
 }
+
+
