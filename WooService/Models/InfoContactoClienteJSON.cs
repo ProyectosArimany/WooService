@@ -25,5 +25,5 @@ public class InfoContactoClienteJSON
 
     public string Dato { get; set; } = "";
 
-    public Boolean EsPrimario { get; set; }
+    public int EsPrimario { get; set; }
 }

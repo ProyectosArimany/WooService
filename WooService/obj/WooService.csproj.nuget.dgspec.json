@@ -1,25 +1,33 @@
 {
   "format": 1,
   "restore": {
-    "/home/julio/Desarrollos/CSharp/DotNetCore/WooService/WooService/WooService.csproj": {}
+    "E:\\Desarrollo\\CSharp\\DotNetCore\\WooService\\WooService\\WooService.csproj": {}
   },
   "projects": {
-    "/home/julio/Desarrollos/CSharp/DotNetCore/WooService/WooService/WooService.csproj": {
+    "E:\\Desarrollo\\CSharp\\DotNetCore\\WooService\\WooService\\WooService.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/home/julio/Desarrollos/CSharp/DotNetCore/WooService/WooService/WooService.csproj",
+        "projectUniqueName": "E:\\Desarrollo\\CSharp\\DotNetCore\\WooService\\WooService\\WooService.csproj",
         "projectName": "WooService",
-        "projectPath": "/home/julio/Desarrollos/CSharp/DotNetCore/WooService/WooService/WooService.csproj",
-        "packagesPath": "/home/julio/.nuget/packages/",
-        "outputPath": "/home/julio/Desarrollos/CSharp/DotNetCore/WooService/WooService/obj/",
+        "projectPath": "E:\\Desarrollo\\CSharp\\DotNetCore\\WooService\\WooService\\WooService.csproj",
+        "packagesPath": "C:\\Users\\julio.TRITON\\.nuget\\packages\\",
+        "outputPath": "E:\\Desarrollo\\CSharp\\DotNetCore\\WooService\\WooService\\obj\\",
         "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages",
+          "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder"
+        ],
         "configFilePaths": [
-          "/home/julio/.nuget/NuGet/NuGet.Config"
+          "C:\\Users\\julio.TRITON\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
           "net8.0"
         ],
         "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -32,6 +40,11 @@
           "warnAsError": [
             "NU1605"
           ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
         }
       },
       "frameworks": {
@@ -64,11 +77,15 @@
             },
             "System.ServiceModel.NetTcp": {
               "target": "Package",
-              "version": "[6.0.*, )"
+              "version": "[8.0.0, )"
+            },
+            "System.ServiceModel.Primitives": {
+              "target": "Package",
+              "version": "[8.0.0, )"
             },
             "System.ServiceModel.Security": {
               "target": "Package",
-              "version": "[6.0.*, )"
+              "version": "[6.0.0, )"
             },
             "WooCommerceNET": {
               "target": "Package",
@@ -91,7 +108,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/usr/lib64/dotnet/sdk/8.0.108/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.303/PortableRuntimeIdentifierGraph.json"
         }
       }
     }

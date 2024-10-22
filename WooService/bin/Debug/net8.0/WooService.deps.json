@@ -14,7 +14,8 @@
           "System.ServiceModel.Duplex": "6.0.0",
           "System.ServiceModel.Federation": "6.0.0",
           "System.ServiceModel.Http": "6.0.0",
-          "System.ServiceModel.NetTcp": "6.0.0",
+          "System.ServiceModel.NetTcp": "8.0.0",
+          "System.ServiceModel.Primitives": "8.0.0",
           "System.ServiceModel.Security": "6.0.0",
           "WooCommerceNET": "0.8.6"
         },
@@ -107,22 +108,22 @@
           "runtimes/win-arm/native/Microsoft.Data.SqlClient.SNI.dll": {
             "rid": "win-arm",
             "assetType": "native",
-            "fileVersion": "0.0.0.0"
+            "fileVersion": "5.1.1.0"
           },
           "runtimes/win-arm64/native/Microsoft.Data.SqlClient.SNI.dll": {
             "rid": "win-arm64",
             "assetType": "native",
-            "fileVersion": "0.0.0.0"
+            "fileVersion": "5.1.1.0"
           },
           "runtimes/win-x64/native/Microsoft.Data.SqlClient.SNI.dll": {
             "rid": "win-x64",
             "assetType": "native",
-            "fileVersion": "0.0.0.0"
+            "fileVersion": "5.1.1.0"
           },
           "runtimes/win-x86/native/Microsoft.Data.SqlClient.SNI.dll": {
             "rid": "win-x86",
             "assetType": "native",
-            "fileVersion": "0.0.0.0"
+            "fileVersion": "5.1.1.0"
           }
         }
       },
@@ -765,7 +766,7 @@
             "rid": "win",
             "assetType": "runtime",
             "assemblyVersion": "8.0.0.0",
-            "fileVersion": "8.0.23.53103"
+            "fileVersion": "0.0.0.0"
           },
           "runtimes/win/lib/net8.0/System.Diagnostics.EventLog.dll": {
             "rid": "win",
@@ -875,7 +876,6 @@
           "System.Runtime": "4.3.0"
         }
       },
-      "System.Reflection.DispatchProxy/4.7.1": {},
       "System.Reflection.Primitives/4.3.0": {
         "dependencies": {
           "Microsoft.NETCore.Platforms": "1.1.0",
@@ -1010,7 +1010,7 @@
       "System.Security.Principal.Windows/5.0.0": {},
       "System.ServiceModel.Duplex/6.0.0": {
         "dependencies": {
-          "System.ServiceModel.Primitives": "6.0.0"
+          "System.ServiceModel.Primitives": "8.0.0"
         },
         "runtime": {
           "lib/net6.0/System.ServiceModel.Duplex.dll": {
@@ -1023,7 +1023,7 @@
         "dependencies": {
           "Microsoft.IdentityModel.Protocols.WsTrust": "6.8.0",
           "System.ServiceModel.Http": "6.0.0",
-          "System.ServiceModel.Primitives": "6.0.0"
+          "System.ServiceModel.Primitives": "8.0.0"
         },
         "runtime": {
           "lib/net6.0/System.ServiceModel.Federation.dll": {
@@ -1075,7 +1075,7 @@
       },
       "System.ServiceModel.Http/6.0.0": {
         "dependencies": {
-          "System.ServiceModel.Primitives": "6.0.0"
+          "System.ServiceModel.Primitives": "8.0.0"
         },
         "runtime": {
           "lib/net6.0/System.ServiceModel.Http.dll": {
@@ -1125,169 +1125,167 @@
           }
         }
       },
-      "System.ServiceModel.NetFramingBase/6.0.0": {
+      "System.ServiceModel.NetFramingBase/8.0.0": {
         "dependencies": {
-          "System.Security.Principal.Windows": "5.0.0",
-          "System.ServiceModel.Primitives": "6.0.0"
+          "System.ServiceModel.Primitives": "8.0.0"
         },
         "runtime": {
-          "lib/net6.0/System.ServiceModel.NetFramingBase.dll": {
-            "assemblyVersion": "6.0.0.0",
-            "fileVersion": "6.0.23.25304"
+          "lib/net8.0/System.ServiceModel.NetFramingBase.dll": {
+            "assemblyVersion": "8.0.0.0",
+            "fileVersion": "8.0.23.60704"
           }
         },
         "resources": {
-          "lib/net6.0/cs/System.ServiceModel.NetFramingBase.resources.dll": {
+          "lib/net8.0/cs/System.ServiceModel.NetFramingBase.resources.dll": {
             "locale": "cs"
           },
-          "lib/net6.0/de/System.ServiceModel.NetFramingBase.resources.dll": {
+          "lib/net8.0/de/System.ServiceModel.NetFramingBase.resources.dll": {
             "locale": "de"
           },
-          "lib/net6.0/es/System.ServiceModel.NetFramingBase.resources.dll": {
+          "lib/net8.0/es/System.ServiceModel.NetFramingBase.resources.dll": {
             "locale": "es"
           },
-          "lib/net6.0/fr/System.ServiceModel.NetFramingBase.resources.dll": {
+          "lib/net8.0/fr/System.ServiceModel.NetFramingBase.resources.dll": {
             "locale": "fr"
           },
-          "lib/net6.0/it/System.ServiceModel.NetFramingBase.resources.dll": {
+          "lib/net8.0/it/System.ServiceModel.NetFramingBase.resources.dll": {
             "locale": "it"
           },
-          "lib/net6.0/ja/System.ServiceModel.NetFramingBase.resources.dll": {
+          "lib/net8.0/ja/System.ServiceModel.NetFramingBase.resources.dll": {
             "locale": "ja"
           },
-          "lib/net6.0/ko/System.ServiceModel.NetFramingBase.resources.dll": {
+          "lib/net8.0/ko/System.ServiceModel.NetFramingBase.resources.dll": {
             "locale": "ko"
           },
-          "lib/net6.0/pl/System.ServiceModel.NetFramingBase.resources.dll": {
+          "lib/net8.0/pl/System.ServiceModel.NetFramingBase.resources.dll": {
             "locale": "pl"
           },
-          "lib/net6.0/pt-BR/System.ServiceModel.NetFramingBase.resources.dll": {
+          "lib/net8.0/pt-BR/System.ServiceModel.NetFramingBase.resources.dll": {
             "locale": "pt-BR"
           },
-          "lib/net6.0/ru/System.ServiceModel.NetFramingBase.resources.dll": {
+          "lib/net8.0/ru/System.ServiceModel.NetFramingBase.resources.dll": {
             "locale": "ru"
           },
-          "lib/net6.0/tr/System.ServiceModel.NetFramingBase.resources.dll": {
+          "lib/net8.0/tr/System.ServiceModel.NetFramingBase.resources.dll": {
             "locale": "tr"
           },
-          "lib/net6.0/zh-Hans/System.ServiceModel.NetFramingBase.resources.dll": {
+          "lib/net8.0/zh-Hans/System.ServiceModel.NetFramingBase.resources.dll": {
             "locale": "zh-Hans"
           },
-          "lib/net6.0/zh-Hant/System.ServiceModel.NetFramingBase.resources.dll": {
+          "lib/net8.0/zh-Hant/System.ServiceModel.NetFramingBase.resources.dll": {
             "locale": "zh-Hant"
           }
         }
       },
-      "System.ServiceModel.NetTcp/6.0.0": {
+      "System.ServiceModel.NetTcp/8.0.0": {
         "dependencies": {
-          "System.ServiceModel.NetFramingBase": "6.0.0",
-          "System.ServiceModel.Primitives": "6.0.0"
+          "System.ServiceModel.NetFramingBase": "8.0.0",
+          "System.ServiceModel.Primitives": "8.0.0"
         },
         "runtime": {
-          "lib/net6.0/System.ServiceModel.NetTcp.dll": {
-            "assemblyVersion": "6.0.0.0",
-            "fileVersion": "6.0.23.25304"
+          "lib/net8.0/System.ServiceModel.NetTcp.dll": {
+            "assemblyVersion": "8.0.0.0",
+            "fileVersion": "8.0.23.60704"
           }
         },
         "resources": {
-          "lib/net6.0/cs/System.ServiceModel.NetTcp.resources.dll": {
+          "lib/net8.0/cs/System.ServiceModel.NetTcp.resources.dll": {
             "locale": "cs"
           },
-          "lib/net6.0/de/System.ServiceModel.NetTcp.resources.dll": {
+          "lib/net8.0/de/System.ServiceModel.NetTcp.resources.dll": {
             "locale": "de"
           },
-          "lib/net6.0/es/System.ServiceModel.NetTcp.resources.dll": {
+          "lib/net8.0/es/System.ServiceModel.NetTcp.resources.dll": {
             "locale": "es"
           },
-          "lib/net6.0/fr/System.ServiceModel.NetTcp.resources.dll": {
+          "lib/net8.0/fr/System.ServiceModel.NetTcp.resources.dll": {
             "locale": "fr"
           },
-          "lib/net6.0/it/System.ServiceModel.NetTcp.resources.dll": {
+          "lib/net8.0/it/System.ServiceModel.NetTcp.resources.dll": {
             "locale": "it"
           },
-          "lib/net6.0/ja/System.ServiceModel.NetTcp.resources.dll": {
+          "lib/net8.0/ja/System.ServiceModel.NetTcp.resources.dll": {
             "locale": "ja"
           },
-          "lib/net6.0/ko/System.ServiceModel.NetTcp.resources.dll": {
+          "lib/net8.0/ko/System.ServiceModel.NetTcp.resources.dll": {
             "locale": "ko"
           },
-          "lib/net6.0/pl/System.ServiceModel.NetTcp.resources.dll": {
+          "lib/net8.0/pl/System.ServiceModel.NetTcp.resources.dll": {
             "locale": "pl"
           },
-          "lib/net6.0/pt-BR/System.ServiceModel.NetTcp.resources.dll": {
+          "lib/net8.0/pt-BR/System.ServiceModel.NetTcp.resources.dll": {
             "locale": "pt-BR"
           },
-          "lib/net6.0/ru/System.ServiceModel.NetTcp.resources.dll": {
+          "lib/net8.0/ru/System.ServiceModel.NetTcp.resources.dll": {
             "locale": "ru"
           },
-          "lib/net6.0/tr/System.ServiceModel.NetTcp.resources.dll": {
+          "lib/net8.0/tr/System.ServiceModel.NetTcp.resources.dll": {
             "locale": "tr"
           },
-          "lib/net6.0/zh-Hans/System.ServiceModel.NetTcp.resources.dll": {
+          "lib/net8.0/zh-Hans/System.ServiceModel.NetTcp.resources.dll": {
             "locale": "zh-Hans"
           },
-          "lib/net6.0/zh-Hant/System.ServiceModel.NetTcp.resources.dll": {
+          "lib/net8.0/zh-Hant/System.ServiceModel.NetTcp.resources.dll": {
             "locale": "zh-Hant"
           }
         }
       },
-      "System.ServiceModel.Primitives/6.0.0": {
+      "System.ServiceModel.Primitives/8.0.0": {
         "dependencies": {
           "Microsoft.Extensions.ObjectPool": "6.0.16",
-          "System.Reflection.DispatchProxy": "4.7.1",
           "System.Security.Cryptography.Xml": "6.0.1"
         },
         "runtime": {
-          "lib/net6.0/System.ServiceModel.Primitives.dll": {
-            "assemblyVersion": "6.0.0.0",
-            "fileVersion": "6.0.23.25304"
+          "lib/net8.0/System.ServiceModel.Primitives.dll": {
+            "assemblyVersion": "8.0.0.0",
+            "fileVersion": "8.0.23.60704"
           }
         },
         "resources": {
-          "lib/net6.0/cs/System.ServiceModel.Primitives.resources.dll": {
+          "lib/net8.0/cs/System.ServiceModel.Primitives.resources.dll": {
             "locale": "cs"
           },
-          "lib/net6.0/de/System.ServiceModel.Primitives.resources.dll": {
+          "lib/net8.0/de/System.ServiceModel.Primitives.resources.dll": {
             "locale": "de"
           },
-          "lib/net6.0/es/System.ServiceModel.Primitives.resources.dll": {
+          "lib/net8.0/es/System.ServiceModel.Primitives.resources.dll": {
             "locale": "es"
           },
-          "lib/net6.0/fr/System.ServiceModel.Primitives.resources.dll": {
+          "lib/net8.0/fr/System.ServiceModel.Primitives.resources.dll": {
             "locale": "fr"
           },
-          "lib/net6.0/it/System.ServiceModel.Primitives.resources.dll": {
+          "lib/net8.0/it/System.ServiceModel.Primitives.resources.dll": {
             "locale": "it"
           },
-          "lib/net6.0/ja/System.ServiceModel.Primitives.resources.dll": {
+          "lib/net8.0/ja/System.ServiceModel.Primitives.resources.dll": {
             "locale": "ja"
           },
-          "lib/net6.0/ko/System.ServiceModel.Primitives.resources.dll": {
+          "lib/net8.0/ko/System.ServiceModel.Primitives.resources.dll": {
             "locale": "ko"
           },
-          "lib/net6.0/pl/System.ServiceModel.Primitives.resources.dll": {
+          "lib/net8.0/pl/System.ServiceModel.Primitives.resources.dll": {
             "locale": "pl"
           },
-          "lib/net6.0/pt-BR/System.ServiceModel.Primitives.resources.dll": {
+          "lib/net8.0/pt-BR/System.ServiceModel.Primitives.resources.dll": {
             "locale": "pt-BR"
           },
-          "lib/net6.0/ru/System.ServiceModel.Primitives.resources.dll": {
+          "lib/net8.0/ru/System.ServiceModel.Primitives.resources.dll": {
             "locale": "ru"
           },
-          "lib/net6.0/tr/System.ServiceModel.Primitives.resources.dll": {
+          "lib/net8.0/tr/System.ServiceModel.Primitives.resources.dll": {
             "locale": "tr"
           },
-          "lib/net6.0/zh-Hans/System.ServiceModel.Primitives.resources.dll": {
+          "lib/net8.0/zh-Hans/System.ServiceModel.Primitives.resources.dll": {
             "locale": "zh-Hans"
           },
-          "lib/net6.0/zh-Hant/System.ServiceModel.Primitives.resources.dll": {
+          "lib/net8.0/zh-Hant/System.ServiceModel.Primitives.resources.dll": {
             "locale": "zh-Hant"
           }
         }
       },
       "System.ServiceModel.Security/6.0.0": {
         "dependencies": {
-          "System.ServiceModel.Primitives": "6.0.0"
+          "System.ServiceModel.Primitives": "8.0.0"
         },
         "runtime": {
           "lib/net6.0/System.ServiceModel.Security.dll": {
@@ -1920,13 +1918,6 @@
       "path": "system.reflection/4.3.0",
       "hashPath": "system.reflection.4.3.0.nupkg.sha512"
     },
-    "System.Reflection.DispatchProxy/4.7.1": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-C1sMLwIG6ILQ2bmOT4gh62V6oJlyF4BlHcVMrOoor49p0Ji2tA8QAoqyMcIhAdH6OHKJ8m7BU+r4LK2CUEOKqw==",
-      "path": "system.reflection.dispatchproxy/4.7.1",
-      "hashPath": "system.reflection.dispatchproxy.4.7.1.nupkg.sha512"
-    },
     "System.Reflection.Primitives/4.3.0": {
       "type": "package",
       "serviceable": true,
@@ -2053,26 +2044,26 @@
       "path": "system.servicemodel.http/6.0.0",
       "hashPath": "system.servicemodel.http.6.0.0.nupkg.sha512"
     },
-    "System.ServiceModel.NetFramingBase/6.0.0": {
+    "System.ServiceModel.NetFramingBase/8.0.0": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-uQK/VWDyPhTgmiTRUL4XxgMlMpS/i/wZT/igYzZWZYmArliHGZ6gd246bypqEJXVgQ0vSY/pZvZ4FxDn0SHhdg==",
-      "path": "system.servicemodel.netframingbase/6.0.0",
-      "hashPath": "system.servicemodel.netframingbase.6.0.0.nupkg.sha512"
+      "sha512": "sha512-eJ1Dql/BTivvCiWqXVV0WbOBDzTQnMCrU4z3qFJQRJ/t7Gof4vLFSz9AmWuUxcyM0T7L++8LqHnhFYWRp0wK8Q==",
+      "path": "system.servicemodel.netframingbase/8.0.0",
+      "hashPath": "system.servicemodel.netframingbase.8.0.0.nupkg.sha512"
     },
-    "System.ServiceModel.NetTcp/6.0.0": {
+    "System.ServiceModel.NetTcp/8.0.0": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-MddP1r0TCNOM+ZkP0d2yMLD/GqN8n0w/QkenqglhAgziXh6ISswgKdXPMqfD9pZYevZzYbtrNqHmjRqzBJLCSw==",
-      "path": "system.servicemodel.nettcp/6.0.0",
-      "hashPath": "system.servicemodel.nettcp.6.0.0.nupkg.sha512"
+      "sha512": "sha512-lb6Ok482MeIYqZTRLlGu6CVSTR5AKHK5VRbzzA8CqtKrQnByC+flssOnyvOXRLn77si5k8Ah+v7oOOsrghuCmw==",
+      "path": "system.servicemodel.nettcp/8.0.0",
+      "hashPath": "system.servicemodel.nettcp.8.0.0.nupkg.sha512"
     },
-    "System.ServiceModel.Primitives/6.0.0": {
+    "System.ServiceModel.Primitives/8.0.0": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-uGyB5FMdwiBmSgJtB0x9mWUuGYj/RbXjh8I6FtsZmUAVcFc6qjOasHPHnflHUk+Qqbx7cAFugDUa2HFRtDe1QA==",
-      "path": "system.servicemodel.primitives/6.0.0",
-      "hashPath": "system.servicemodel.primitives.6.0.0.nupkg.sha512"
+      "sha512": "sha512-hVzK77Bl00H+1V7ho7h03tKlgxAIKssV3eUnRdH+gTCZCK4Ywnv2CR35AV9ly/tRpvsGwNL1d/jkAwB1MWw3Fw==",
+      "path": "system.servicemodel.primitives/8.0.0",
+      "hashPath": "system.servicemodel.primitives.8.0.0.nupkg.sha512"
     },
     "System.ServiceModel.Security/6.0.0": {
       "type": "package",

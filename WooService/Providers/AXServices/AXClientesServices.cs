@@ -3,6 +3,9 @@ using WooService.AXServices.AIFCrearClientes;
 using WooService.Utils;
 using System.Text.Json;
 using System.IdentityModel.Tokens.Jwt;
+using System.Net;
+using System.ServiceModel;
+using System.Text;
 
 namespace WooService.Providers.AXServices;
 /// <summary>
@@ -222,25 +225,23 @@ public class AXClientesServices
     }
 
     /// <summary>
-    /// Crea la clase proxy para conexion al servicio de facturación en AX
+    /// Crea el cliente proxy para conectar al servicio de facturación en AX (AIF).
     /// </summary>
     /// <param name="appSettings">Contiene los valores de los parametros necesarios para crear la conexión</param>
-    /// <returns>Clase con datos de conexión</returns>
+    /// <returns>El Objeto proxy instanciado, con datos para conectar al sistema Dynamics AX</returns>
     private static triAIFCrearClienteServiceClient CreateAXClient(AppSettings appSettings)
     {
-        var endpointIdentity = new System.ServiceModel.UpnEndpointIdentity(appSettings.AXAOSPrincipalName);
-        var EndPoint = new System.ServiceModel.EndpointAddress(new Uri(appSettings.AXAOSNetTCPURIClientes), endpointIdentity);
-        triAIFCrearClienteServiceClient.EndpointConfiguration endPointConfig = triAIFCrearClienteServiceClient.EndpointConfiguration.NetTcpBinding_triAIFCrearClienteService;
+        // ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+        var binding = new NetTcpBinding(SecurityMode.TransportWithMessageCredential);
+        binding.Security.Transport.ClientCredentialType = TcpClientCredentialType.Windows;
+        var endpointIdentity = new UpnEndpointIdentity(appSettings.AXAOSPrincipalName);
+        var EndPoint = new EndpointAddress(new Uri(appSettings.AXAOSNetTCPURIClientes), endpointIdentity);
 
+        triAIFCrearClienteServiceClient.EndpointConfiguration endPointConfig = triAIFCrearClienteServiceClient.EndpointConfiguration.NetTcpBinding_triAIFCrearClienteService;
         triAIFCrearClienteServiceClient axClient = new(endPointConfig, EndPoint);
 
-        //  axClient.ClientCredentials.Windows.ClientCredential = new System.Net.NetworkCredential(appSettings.AXUser, appSettings.AXPass, appSettings.AXDomain);
-        axClient.ClientCredentials.Windows.ClientCredential.Domain = appSettings.AXDomain;
-        axClient.ClientCredentials.Windows.ClientCredential.UserName = appSettings.AXUser;
-        axClient.ClientCredentials.Windows.ClientCredential.Password = appSettings.AXPass;
-
+        axClient.ClientCredentials.Windows.ClientCredential = new NetworkCredential(appSettings.AXUser, appSettings.AXPass, appSettings.AXDomain);
         axClient.InnerChannel.OperationTimeout = new TimeSpan(0, 15, 0);
-
         return axClient;
     }
 
@@ -258,6 +259,12 @@ public class AXClientesServices
             ResultadoOperacionAX? res = JsonSerializer.Deserialize<ResultadoOperacionAX>(JSONResultadoOperacionAX);
             if (res is not null)
             {
+                if (Global.StrIsBlank(res.ErrorMsg)) res.ErrorMsg = "";
+                else
+                {
+                    byte[] base64bytes = Convert.FromBase64String(res.ErrorMsg);
+                    res.ErrorMsg = Encoding.UTF8.GetString(base64bytes);
+                }
                 return res;
             }
             msgError = "Error al obtene el resultado de la operación en AX";

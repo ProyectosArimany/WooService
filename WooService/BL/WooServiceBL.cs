@@ -8,6 +8,7 @@ using WooService.Providers.AXServices;
 using WooService.Providers;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Cryptography.X509Certificates;
+using System.Text;
 
 
 namespace WooService.BL;
@@ -378,10 +379,10 @@ public static class WooServiceBL
                         WooTituloMetodoPago = pedido.payment_method_title,
                         WooMetodoPago = pedido.payment_method,
                         WooJSON = JsonSerializer.Serialize(pedido),
-                        Operado = false,
-                        SincronizarProducto = false,
-                        GenerarEncabezadoJSON = false,
-                        GenerarDetalleJSON = false,
+                        Operado = true,
+                        SincronizarProducto = true,
+                        GenerarEncabezadoJSON = true,
+                        GenerarDetalleJSON = true,
                         WooFecha = pedido.date_created!.Value,
                         Fecha = DateTime.Now,
                         Correlativo = intcorrelativo,
@@ -412,9 +413,8 @@ public static class WooServiceBL
                     }
 
                     // Registrar pedido en Sistema AX.  
-                    // TODO: Descomentar la siguiente línea cuando se tenga la conexión con AX.
-                    //    (ok, Error, Causa, Solucion) = await CrearPedidoEnAX(_context, appsets, ParamsClientes, wooPedido, pedidoLocal!);
-                    ok = true;
+                    (ok, Error, Causa, Solucion) = await CrearPedidoEnAX(_context, appsets, ParamsClientes, wooPedido, pedidoLocal!);
+
                     if (!ok)
                     {
                         await transaction.RollbackAsync();
@@ -456,9 +456,9 @@ public static class WooServiceBL
             }
             else
             {
+                /// Cambiar estado del pedido en el portal web para revisión.
                 // bool ok = await wooprovider.ActualizarEstadoPedido(pedido.id ?? 0, "processing");
-                bool ok = true;  // TODO: Quitar esta línea y Descomentar la linea anterior cuando
-                                 // se tenga la conexión con el portal web.
+                bool ok = true;
                 if (!ok)
                 {
                     string error = "Error al intentar cambiar el estado del pedido en el portal web.";
@@ -532,7 +532,7 @@ public static class WooServiceBL
             {
                 DetalleId = i++,
                 PedidoId = wooPedido.PedidoId,
-                ItemId = producto.CodigoProducto,
+                ItemId = producto.CodigoBase,
                 RetailVariantId = producto.Variante,
                 WooSKU = item.sku,
                 WooNombre = item.name,
@@ -564,6 +564,7 @@ public static class WooServiceBL
     /// <returns>El registro del cliente, creado o actualizado. Null si ocurre un error</returns>
     private static async Task<(Cliente?, string, string, string)> CreateOrUpdateWooCliente(WooCommerceContext _context, AXContext aXContext, AppSettings appsets, Order pedido, ParametrosClientesNuevosWEB ParamsClientes)
     {
+        _context.ChangeTracker.Clear();
         /// Llenar ficha del cliente, con datos del pedido obtenidos del portal web.
         Cliente wooCliente = LLenarFichaCliente(pedido);
 
@@ -678,20 +679,16 @@ public static class WooServiceBL
         {
             /// Asignar direcciones del cliente.
             wooCliente.Direcciones = direcciones;
-            await _context.SaveChangesAsync();
 
-            // Crear o actualizar cliente en AX.
-            // TODO: QUITAR PARA ACTUALIZAR EN PRODUCCION.
-            return (wooCliente, Error, Causa, Solucion);
             /// Actualizar o registrar cliente en sistema AX, antes de registrar,
             /// las direcciones, en sistema AX.
             ResultadoOperacionAX result = await axservice.CrearClienteWEB(wooCliente, ParamsClientes, appsets.Pais);
-            if (Global.StrIsBlank(result.ErrorMsg))
+            if (!Global.StrIsBlank(result.ErrorMsg))
             {
                 Error = result.ErrorMsg;
                 Causa += Causa.IsNullOrEmpty() ? result.Advertencia : Environment.NewLine + result.Advertencia;
-                solucion = "Verifique el estado de error para conocer detalles del error." + Environment.NewLine +
-                                  "Y llame al administrador del sistema.";
+                solucion = "Verifique el estado del servicio para conocer detalles del error." + Environment.NewLine +
+                                  "Llame a soporte IT.";
                 Solucion += Solucion.IsNullOrEmpty() ? solucion : Environment.NewLine + solucion;
                 return (null, Error, Causa, Solucion);
             }
@@ -719,6 +716,16 @@ public static class WooServiceBL
                 Solucion += "Verifique que el servicio AIF de Dynamics Ax, este funcionado" + Environment.NewLine;
             });
             if (!Global.StrIsBlank(Error)) return (null, Error, Causa, Solucion);
+            //Sincronizar contactos en ax telefono y correo electrónico.
+            (ok, causa, solucion) = await CrearContactosEnAX(wooCliente, appsets);
+            if (!ok)
+            {
+                Causa += Causa.IsNullOrEmpty() ? causa : Environment.NewLine + causa;
+                Solucion += Solucion.IsNullOrEmpty() ? solucion : Environment.NewLine + solucion;
+            }
+            _context.Clientes.Update(wooCliente);
+
+            await _context.SaveChangesAsync();
         }
         catch (Exception ex)
         {
@@ -731,13 +738,7 @@ public static class WooServiceBL
             return (null, Error, Causa, Solucion);
         }
 
-        //Sincronizar contactos en ax telefono y correo electrónico.
-        (ok, causa, solucion) = await CrearContactosEnAX(wooCliente, appsets);
-        if (!ok)
-        {
-            Causa += Causa.IsNullOrEmpty() ? causa : Environment.NewLine + causa;
-            Solucion += Solucion.IsNullOrEmpty() ? solucion : Environment.NewLine + solucion;
-        }
+
         return (wooCliente, Error, Causa, Solucion);
     }
 
@@ -871,6 +872,7 @@ public static class WooServiceBL
         pedido.MensajeAXId = result.Error;
         pedido.Operar = false;
         pedido.OperadoAX = true;
+        _context.Pedidos.Update(pedido);
         await _context.SaveChangesAsync();
 
         /// Actualizar registro de WooPedido en base de datos local.
@@ -878,6 +880,7 @@ public static class WooServiceBL
         wooPedido.SincronizarProducto = false;
         wooPedido.GenerarEncabezadoJSON = false;
         wooPedido.GenerarDetalleJSON = false;
+        _context.WooPedidos.Update(wooPedido);
         await _context.SaveChangesAsync();
         return (true, Error, Causa, Solucion);
     }
@@ -926,7 +929,7 @@ public static class WooServiceBL
         if (pedido.billing is not null)
         {
             if (Global.StrIsBlank(Nombre)) Nombre = pedido.billing.first_name;
-            if (Global.StrIsBlank(Apellido)) Apellido = pedido.billing.last_name;
+            if (Global.StrIsBlank(Nombre)) Apellido = pedido.billing.last_name;
             Telefono = pedido.billing.phone ?? "";
             Email = pedido.billing.email ?? "";
         }
@@ -935,7 +938,7 @@ public static class WooServiceBL
         if (pedido.shipping is not null)
         {
             if (Global.StrIsBlank(Nombre)) Nombre = pedido.shipping.first_name;
-            if (Global.StrIsBlank(Apellido)) Apellido = pedido.shipping.last_name;
+            if (Global.StrIsBlank(Nombre)) Apellido = pedido.shipping.last_name;
         }
 
 
@@ -977,7 +980,7 @@ public static class WooServiceBL
 
         /// obtener dirección de facturación.
         ClienteDireccion dirFacturacion = new() { TipoDireccion = LogisticsLocationRoleType.Invoice, ClienteId = cliente.ClienteId };
-        ClienteDireccion dirEnvio = new() { TipoDireccion = LogisticsLocationRoleType.Delivery, ClienteId = cliente.ClienteId };
+        ClienteDireccion dirEnvio = new() { TipoDireccion = LogisticsLocationRoleType.Delivery, ClienteId = cliente.ClienteId, Envio = true };
 
         /// Obtener Direccion de facturación de los metadatos, 
         /// omitir la dirección de facturación que viene en el objeto billing del pedido.
@@ -1083,11 +1086,12 @@ public static class WooServiceBL
             {
                 CodigoCliente = wooClient.ClienteAXId,
                 TipoDatoContacto = LogisticsElectronicAddressMethodType.Teléfono,
-                Descripcion = "Numero de teléfonico",
+                Descripcion = "TELEFONO PRINCIPAL",
                 Dato = wooClient.Telefono,
-                EsPrimario = true
+                EsPrimario = 1
             };
             String jsontelefono = JsonSerializer.Serialize(contacto);
+
             AXClientesServices axservice = new(appsets);
             ResultadoOperacionAX result = await axservice.CrearContactoDeCliente(jsontelefono);
             if (!Global.StrIsBlank(result.ErrorMsg))
@@ -1107,7 +1111,7 @@ public static class WooServiceBL
                 TipoDatoContacto = LogisticsElectronicAddressMethodType.Email,
                 Descripcion = "Buzón de correo electrónico",
                 Dato = wooClient.CorreoElectronico,
-                EsPrimario = true
+                EsPrimario = 1
             };
             String jsonCorreo = JsonSerializer.Serialize(contacto);
             AXClientesServices axservice = new(appsets);
@@ -1116,7 +1120,7 @@ public static class WooServiceBL
             {
                 Causa += "Error al crear email en sistema AX" + Environment.NewLine + result.ErrorMsg + Environment.NewLine +
                          (result.Advertencia.IsNullOrEmpty() ? "Advertencias: " + result.Advertencia : "");
-                Solucion += "Reporte el incidente al administrador del sistema.";
+                Solucion += "Reporte el incidente al soporte de IT.";
             }
         }
         return (Global.StrIsBlank(Causa), Causa, Solucion);

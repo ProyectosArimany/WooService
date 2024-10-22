@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("WooService")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3e58e1c87b57eaca0169474f37b4753a64375494")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+bcf87d67b8b1e90a8430469f9173e534554f46b8")]
 [assembly: System.Reflection.AssemblyProductAttribute("WooService")]
 [assembly: System.Reflection.AssemblyTitleAttribute("WooService")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
